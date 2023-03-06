@@ -9,7 +9,14 @@ links = [
      'https://www.youtube.com/watch?v=sWu7Sok3kok',
      'https://www.youtube.com/watch?v=6UZJfjBcUKM'
 ]
+hidden_hazard = [
+     'https://www.youtube.com/watch?v=EwgbjEKO6xE', # police car chase
+     'https://www.youtube.com/watch?v=c48IdUzouo0', # lightnings
+     'https://www.youtube.com/watch?v=hr8knfSooVI', # explosion
+     'https://www.youtube.com/watch?v=cYB_Za5eI3Q', # explosion 2
+     'https://www.youtube.com/watch?v=8disaQwktk0' # paparazzi splashes
 
+]
 def download_video(url:str,path:str = 'videos/', filename:Union[str,None] = None)->bool:
      '''
 
@@ -23,4 +30,7 @@ def download_video(url:str,path:str = 'videos/', filename:Union[str,None] = None
      return True
 
 for link in links:
+     download_video(link)
+
+for link in hidden_hazard:
      download_video(link)
