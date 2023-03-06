@@ -1,5 +1,12 @@
+from typing import Union
 from pytube import YouTube as yt
 
-video = yt('https://www.youtube.com/watch?v=4LQLvgXLguk')
-video = video.streams.get_highest_resolution()
-video.download('videos/')
+def download_video(url:str,path:str = 'videos/', filename:Union[str,None] = None)->bool:
+    video = yt(url)
+    stream = video.streams.get_highest_resolution()
+    try:
+         stream.download(path)
+    except Exception:
+         return False
+    return True
+
