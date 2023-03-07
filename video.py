@@ -26,6 +26,7 @@ class Video:
         if not end:
             raise StopIteration
         frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+        #frame = cv.resize(frame, dsize=(600, 400))
         return frame
 
 
