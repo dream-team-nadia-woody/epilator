@@ -26,6 +26,7 @@ class Video:
         if not end:
             raise StopIteration
         frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+        frame = cv.resize(frame,(50,50),interpolation=cv.INTER_CUBIC)
         return frame
 
 
