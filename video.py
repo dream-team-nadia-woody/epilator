@@ -25,9 +25,9 @@ class Video:
         end, frame = self.video.read()
         if not end:
             raise StopIteration
-        frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-        frame = cv.resize(frame,(50,50),interpolation=cv.INTER_CUBIC)
-        #frame = cv.resize(frame, dsize=(600, 400))
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2HLS)
+        frame = cv.resize(frame,(100,100),interpolation=cv.INTER_NEAREST)
+        #frame = cv.resize (frame, dsize=(600, 400))
         return frame
 
 
@@ -46,10 +46,10 @@ def get_vid_df(path: str) -> pd.DataFrame:
     df = pd.DataFrame(vid.reshape((-1,3)))
     df['frame'] = df.index // (width * height)
     df['x'] = df.index % width
-    df['y'] = df.index // height
+    df['y'] = df.index // width % height
     df = df.set_index(['frame','y','x']).rename(columns={
         0:'hue',
-        1:'saturation',
-        2:'value',
+        1:'lightness',
+        2:'saturation',
     })
     return df,fps
