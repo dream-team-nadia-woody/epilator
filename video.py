@@ -52,4 +52,5 @@ def get_vid_df(path: str) -> pd.DataFrame:
         1:'lightness',
         2:'saturation',
     })
-    return df,fps
+    df.attrs['fps'] = fps
+    return df
