@@ -54,3 +54,4 @@ def get_vid_df(path: str) -> pd.DataFrame:
     })
     df.attrs['fps'] = fps
     return df
+
