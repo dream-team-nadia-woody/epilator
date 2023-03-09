@@ -5,6 +5,7 @@ from cv2 import cvtColor, COLOR_HLS2RGB as hls_rgb
 from PIL import Image
 from numpy.typing import NDArray
 import numpy as np
+import os
 
 
 def create_image(arr: pd.DataFrame, frame_x: int, frame_y: int) -> Image:
