@@ -72,5 +72,7 @@ def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COL
         1: 'saturation',
         2: 'value',
     })
+    df.attrs['height'] = height
+    df.attrs['width'] = width
     df.attrs['fps'] = fps
     return df
