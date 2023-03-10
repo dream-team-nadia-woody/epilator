@@ -73,4 +73,5 @@ def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COL
         2: 'value',
     })
     df.attrs['fps'] = fps
+    df.attrs['conversion'] = conversion
     return df
