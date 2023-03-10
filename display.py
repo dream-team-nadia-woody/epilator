@@ -1,16 +1,18 @@
 from typing import Iterator, Union
 
 import pandas as pd
-from cv2 import cvtColor, COLOR_HLS2RGB as hls_rgb
+from cv2 import cvtColor, COLOR_HSV2RGB as hsv_rgb
 from PIL import Image
 from numpy.typing import NDArray
 import numpy as np
+from video import FRAME_X, FRAME_Y
 import os
 
 
-def create_image(arr: pd.DataFrame, frame_x: int, frame_y: int) -> Image:
-    arr = arr.to_numpy().reshape((frame_x, frame_y, 3))
-    arr = cvtColor(arr, hls_rgb)
+def create_image(arr: Union[pd.DataFrame, NDArray], frame_x: int = FRAME_X, frame_y: int = FRAME_Y) -> Image:
+    if isinstance(arr, pd.DataFrame):
+        arr = arr.to_numpy().reshape((frame_x, frame_y, 3))
+    arr = cvtColor(arr, hsv_rgb)
     return Image.fromarray(arr)
 
 
@@ -31,3 +33,14 @@ def show_frame(df: pd.DataFrame, frames: Union[int, Iterator], width: int = 5) -
         y = frame_y * (index // width)
         ret_img.paste(frame, (x, y, x + frame_x, y + frame_y))
     return ret_img
+
+
+def show_sequence(arr: NDArray,n:int = 5) -> Image:
+    ret_width = arr.shape[2] * n
+    ret_height = arr.shape[0] * arr.shape[1] // n
+    final_image = Image.new('RGB',(ret_width,ret_height))
+    for index, img in enumerate(arr):
+        x = img.shape[1] * (index % n)
+        y = img.shape[0] * (index // n)
+        final_image.paste(create_image(img),(x,y,x+img.shape[1],y + img.shape[0]))
+    return final_image
