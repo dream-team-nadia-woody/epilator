@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from collections import deque
 
 FRAME_X = 100
-FRAME_Y = 100
+FRAME_Y = 100 
 
 
 class Video:
