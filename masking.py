@@ -12,9 +12,3 @@ def get_mask(img: np.array):
     result = cv2.bitwise_and(blue,blue, mask= mask)
 
     return result
-
-def plot_masked_img(img: np.array):
-    '''
-    plot the image
-    '''
-    img = cv2.
