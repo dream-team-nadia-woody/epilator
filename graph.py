@@ -22,7 +22,8 @@ def graph_frames(df: pd.DataFrame, key: Union[str, List[str]],
 def graph_all_channels(df: pd.DataFrame,
                        func: Callable,
                        colors: List[str] = ['red', 'green', 'blue'], **kwargs):
-    fig, axs = plt.subplots(3, 1, **kwargs)
-    groupby = df.groupby('frame')
-    for ax, channel, color in zip(axs,df.columns, colors):
-        ax = graph_frames()
+    # fig, axs = plt.subplots(3, 1, **kwargs)
+    # groupby = df.groupby('frame')
+    # for ax, channel, color in zip(axs,df.columns, colors):
+    #     ax = graph_frames()
+    pass
