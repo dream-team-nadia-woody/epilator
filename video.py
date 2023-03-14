@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from collections import deque
 
 FRAME_X = 100
-FRAME_Y = 100 
+FRAME_Y = 100
 
 
 class Video:
@@ -47,7 +47,7 @@ class Video:
             frame = cv.resize(frame, (FRAME_X, FRAME_Y),
                               interpolation=cv.INTER_NEAREST)
             frames.append(frame)
-        return np.stack(np.asarray(frames)),int(round(fps))
+        return np.stack(np.asarray(frames)), int(round(fps))
 
 
 def get_video_from_iterator(path: str) -> Tuple[NDArray, int]:
@@ -77,3 +77,13 @@ def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COL
     df.attrs['fps'] = fps
     df.attrs['conversion'] = conversion
     return df
+
+
+def mask_values(df: pd.DataFrame, threshold: Union[int, NDArray], channel: int = 2) -> pd.DataFrame:
+    arr = df.to_numpy().reshape((-1, df.attrs['width'], 3))
+    if isinstance(threshold, int):
+        threshold = np.asarray([0, threshold, 0], np.uint8)
+    mask = cv.inRange(arr, threshold, np.asarray([255, 255, 255], np.uint8))
+    arr[:, :, 2] = np.where(mask > 0, arr[:, :, 2], 0)
+    arr = arr.reshape((-1, FRAME_X, FRAME_Y,3))
+    return get_vid_df(arr, df.attrs['fps'])
