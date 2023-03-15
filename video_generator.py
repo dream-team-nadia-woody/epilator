@@ -109,7 +109,7 @@ def color_flash():
     return create_vid('videos/Color Flash.mp4', ret_frames)
 
 
-if __name__ == "__main__":
+def generate_videos():
     black_white_flash()
     spinning_red()
     rgb_fade()
