@@ -1,5 +1,6 @@
 from typing import Union
 from pytube import YouTube as yt
+from video_generator import generate_videos
 
 links = [
     'https://www.youtube.com/watch?v=4LQLvgXLguk',
@@ -38,3 +39,4 @@ if __name__ == "__main__":
 
     for link in hidden_hazard:
         download_video(link)
+    generate_videos()
