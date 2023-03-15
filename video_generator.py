@@ -4,7 +4,7 @@ from typing import Callable, Union
 from numpy.typing import NDArray
 
 fourcc = cv.VideoWriter_fourcc(*'mp4v')
-FRAME_WIDTH = 1900
+FRAME_WIDTH = 1920
 FRAME_HEIGHT = 1080
 FRAME_FPS = 30
 
@@ -20,9 +20,9 @@ def vid_frame(frames): return np.zeros(
     (frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
 
 
-def create_vid(path: str, frames: Union[NDArray, Callable]):
+def create_vid(path: str, frames: Union[NDArray, Callable], fps=FRAME_FPS):
     writer = cv.VideoWriter(path, fourcc,
-                            FRAME_FPS, (FRAME_WIDTH, FRAME_HEIGHT))
+                            fps, (FRAME_WIDTH, FRAME_HEIGHT))
     for frame in frames:
         writer.write(frame)
     writer.release()
@@ -53,24 +53,54 @@ def create_spinning_red():
             y = height
         elif i == 3:
             y = height
-        cv.rectangle(frame, (x,y),(x+width, y + height),(0,0,255),-1)
+        cv.rectangle(frame, (x, y), (x+width, y + height), (0, 0, 255), -1)
     return create_vid('videos/Red Spin.mp4', ret_arr)
 
-def blue_green_fade():
-    ret_frames = vid_frame(256 * 3)
-    for i in range(256):
-        ret_frames[i,:,:,0] = i
-    ret_frames[256:512,:,:,0] = 255
-    for i in range(256):
-        ret_frames[256+i,:,:,1] = i
-    ret_frames[512:,:,:,1] = 255
-    for i in range(256):
-        ret_frames[512+i,:,:,0] = 255-i
-    return create_vid('videos/Blue Green Fade.mp4',ret_frames)
 
+def rgb_fade():
+    ret_frames = vid_frame(2304)
+    for i in range(256):
+        ret_frames[i, :, :, 0] = i
+    ret_frames[256:512, :, :, 0] = 255
+    for i in range(256):
+        ret_frames[256+i, :, :, 1] = i
+    ret_frames[512:1024, :, :, 1] = 255
+    for i in range(256):
+        ret_frames[512+i, :, :, 0] = 255-i
+    for i in range(256):
+        ret_frames[768 + i, :, :, 2] = i
+    ret_frames[1024:1792, :, :, 2] = 255
+    for i in range(256):
+        ret_frames[1024 + i, :, :, 1] = 255-i
+    for i in range(256):
+        ret_frames[1280 + i, :, :, 0] = i
+    for i in range(256):
+        ret_frames[1536 + i, :, :, (0, 1)] = 255-i
+    ret_frames[1792:2048, :, :, 0] = 255
+    for i in range(256):
+        ret_frames[1792 + i, :, :, (1, 2)] = i
+    ret_frames[2048:, :, :, 1] = 255
+    for i in range(256):
+        ret_frames[2048+i, :, :, (0, 2)] = 255-i
+    return create_vid('videos/Color Fade.mp4', ret_frames, 60)
+
+
+def blue_green_flash():
+    ret_frames = vid_frame(5 * FRAME_FPS)
+    for i, frame in enumerate(ret_frames):
+        frame[:, :, i % 2] = 255
+    return create_vid('videos/Blue Green Flash.mpr', ret_frames)
+
+
+def color_flash():
+    ret_frames = vid_frame(5 * FRAME_FPS)
+    for i, frame in enumerate(ret_frames):
+        frame[:, :, i % 3] = 255
+    return create_vid('videos/Color Flash.mp4', ret_frames)
 
 
 if __name__ == "__main__":
-    create_black_white_flash()
-    create_spinning_red()
-    blue_green_fade()
+    # create_black_white_flash()
+    # create_spinning_red()
+    rgb_fade()
+    # color_flash()

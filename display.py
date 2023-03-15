@@ -38,9 +38,13 @@ def show_frame(df: pd.DataFrame, frames: Union[int, Iterator], width: int = 5) -
 def show_sequence(arr: Union[pd.DataFrame,NDArray], n: int = 5) -> Image:
     if isinstance(arr, pd.DataFrame):
         arr = arr.to_numpy().reshape(
-            (-1, arr.attrs['width'], arr.attrs['height'], 3))
-    ret_width = arr.shape[2] * n
-    ret_height = arr.shape[0] * arr.shape[1] // n
+            (-1, FRAME_Y, FRAME_X, 3))
+    if arr.shape[0] < n:
+        ret_width = arr.shape[0] * arr.shape[2]
+        ret_height = arr.shape[1]
+    else:
+        ret_width = arr.shape[2] * n
+        ret_height = arr.shape[0] * arr.shape[1] // n
     final_image = Image.new('RGB', (ret_width, ret_height))
     for index, img in enumerate(arr):
         x = img.shape[1] * (index % n)

@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 import cv2 as cv
 import numpy as np
 import pandas as pd
@@ -6,8 +6,8 @@ from numpy.typing import NDArray
 from dataclasses import dataclass
 from collections import deque
 
-FRAME_X = 100
-FRAME_Y = 100
+FRAME_X = 80
+FRAME_Y = 45
 
 
 class Video:
@@ -57,7 +57,7 @@ def get_video_from_iterator(path: str) -> Tuple[NDArray, int]:
     return np.stack(video), int(round(fps))
 
 
-def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COLOR_BGR2HSV) -> pd.DataFrame:
+def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COLOR_BGR2HLS, rename: List[str]= ['hue','lightness','saturation']) -> pd.DataFrame:
     if isinstance(vid, str):
         vid, fps = Video(vid).get_vid(conversion)
     frames = vid.shape[0]
@@ -67,27 +67,26 @@ def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COL
     df['frame'] = df.index // (width * height)
     df['x'] = df.index % width
     df['y'] = df.index // width % height
-    df = df.set_index(['frame', 'y', 'x']).rename(columns={
-        0: 'hue',
-        1: 'saturation',
-        2: 'value',
-    })
+    rename = {key: value for key, value in enumerate(rename)}
+    df = df.set_index(['frame', 'y', 'x']).rename(columns=rename)
     df.attrs['height'] = height
     df.attrs['width'] = width
     df.attrs['fps'] = fps
     df.attrs['conversion'] = conversion
     return df
 
+
 def get_mask(img: np.array):
     '''
     get the lightness mask from hls image
     '''
 
-    Lchannel = img[:,:,1]
+    Lchannel = img[:, :, 1]
     mask = cv.inRange(Lchannel, 160, 255)
-    #mask = np.where(255, 1, 0)
+    # mask = np.where(255, 1, 0)
 
     return mask
+
 
 def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     '''
@@ -95,7 +94,7 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     where 1 - light pixel, 0 - dark pixel
     '''
     # let's try the same but through numpy array
-    narr = np.empty((0,),dtype=np.uint8)
+    narr = np.empty((0,), dtype=np.uint8)
     w = df.attrs['width']
     h = df.attrs['height']
     # loop through the frames
@@ -105,4 +104,4 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
         # get the mask
         mask = get_mask(frame)
         narr = np.concatenate([narr, mask.reshape(-1)])
-    return df.assign(masked_values = narr)
+    return df.assign(masked_values=narr)
