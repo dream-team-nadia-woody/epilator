@@ -57,7 +57,10 @@ def get_video_from_iterator(path: str) -> Tuple[NDArray, int]:
     return np.stack(video), int(round(fps))
 
 
-def get_vid_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COLOR_BGR2HLS, rename: List[str]= ['hue','lightness','saturation']) -> pd.DataFrame:
+def get_vid_df(vid: Union[str, NDArray], fps: int = 30,
+               conversion: int = cv.COLOR_BGR2HLS,
+               rename: List[str] = [
+        'hue', 'lightness', 'saturation']) -> pd.DataFrame:
     if isinstance(vid, str):
         vid, fps = Video(vid).get_vid(conversion)
     frames = vid.shape[0]
@@ -100,8 +103,54 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     # loop through the frames
     for f in df.index.levels[0]:
         # save an image to the variable 'frame'
-        frame = df.loc[f].iloc[:, :-1].to_numpy().reshape(w, h, 3)
+        frame = df.loc[f].iloc[:, :].to_numpy().reshape(w, h, 3)
         # get the mask
         mask = get_mask(frame)
         narr = np.concatenate([narr, mask.reshape(-1)])
     return df.assign(masked_values=narr)
+
+
+def add_seconds(df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Adds columns 'seconds' that shows the second of the video
+    '''
+    return df.assign(
+        seconds=lambda x: x.index.get_level_values('frame') // x.attrs['fps']
+    )
+
+
+def get_exploration_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COLOR_BGR2HLS) -> pd.DataFrame:
+    '''
+    returns a data frame of the video with mask values and seconds added
+    '''
+    df = get_vid_df(vid)
+    df = add_mask(df)
+    df = add_seconds(df)
+    df.masked_values.replace({255: 1}, inplace=True)
+    return df
+
+
+def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    returns aggregated (by average per frame) values of hue, lightness, saturation and mask
+    '''
+    # lightness series
+    ls = df.groupby('frame').lightness.mean()
+    # hue hls
+    hue = df.groupby('frame').hue.mean()
+    # saturtion hls
+    saturation = df.groupby('frame').saturation.mean()
+    # mask
+    mask = df.groupby('frame').masked_values.sum()
+
+    cdf = pd.concat([ls, hue, saturation, mask], axis=1)
+    cdf = cdf.assign(
+        light_diff=lambda x: x.lightness.shift(1) - x.lightness,
+        hue_diff=lambda x: x.hue.shift(1) - x.hue,
+        saturation_diff=lambda x: x.saturation.shift(1) - x.saturation,
+        mask_diff=lambda x: x.masked_values.shift(1) - x.masked_values
+    )
+
+    return cdf
+
+
