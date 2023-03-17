@@ -33,7 +33,7 @@ class VideoReader:
         frame = cv.resize(frame, (FRAME_X, FRAME_Y),
                           interpolation=cv.INTER_NEAREST)
         return frame
-    
+
     @classmethod
     def get_vid(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> NDArray:
         vid_reader = cls(path)
@@ -50,7 +50,7 @@ class VideoReader:
             frame = cv.resize(frame, (FRAME_X, FRAME_Y),
                               interpolation=cv.INTER_NEAREST)
             frames.append(frame)
-        return np.stack(np.asarray(frames)), int(round(fps))
+        return np.stack(np.asarray(frames, dtype=np.uint8)), int(round(fps))
 
 
 def get_video_from_iterator(path: str) -> Tuple[NDArray, float]:
@@ -96,7 +96,8 @@ def get_mask(img: np.array):
 
 def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     '''
-    calls get_frame() to generate mask for each frame. saves results in np.array of 1 and 0
+    calls get_frame() to generate mask for each frame. s
+    aves results in np.array of 1 and 0
     where 1 - light pixel, 0 - dark pixel
     '''
     # let's try the same but through numpy array
@@ -122,7 +123,8 @@ def add_seconds(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def get_exploration_df(vid: Union[str, NDArray], fps: int = 30, conversion: int = cv.COLOR_BGR2HLS) -> pd.DataFrame:
+def get_exploration_df(vid: Union[str, NDArray], fps: int = 30,
+                       conversion: int = cv.COLOR_BGR2HLS) -> pd.DataFrame:
     '''
     returns a data frame of the video with mask values and seconds added
     '''
@@ -135,7 +137,8 @@ def get_exploration_df(vid: Union[str, NDArray], fps: int = 30, conversion: int 
 
 def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     '''
-    returns aggregated (by average per frame) values of hue, lightness, saturation and mask
+    returns aggregated (by average per frame) values of hue,
+    lightness, saturation and mask
     '''
     # lightness series
     ls = df.groupby('frame').lightness.mean()
@@ -193,18 +196,29 @@ class Video:
     def lightness(self) -> NDArray:
         return self._vid[:, :, :1]
 
+    @property
+    def width(self):
+        return self._vid.shape[2]
+
+    @property
+    def height(self):
+        return self._vid.shape[1]
+
     @classmethod
     def from_file(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> Self:
-        vid, fps = VideoReader.get_vid(path,conversion)
+        vid, fps = VideoReader.get_vid(path, conversion)
         return cls(vid, fps)
 
-    def __getitem__(self, frame_no: int) -> Frame:
-        frame = self._vid[frame_no]
-        seconds = np.float128(frame_no / self.fps)
-        return Frame(frame,frame_no,seconds)
-    
-    def __setitem__(self,frame_no:int,new_val:int):
+    def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
+        if isinstance(frame_no, int):
+            frame = self._vid[frame_no]
+            seconds = np.float128(frame_no / self.fps)
+            return Frame(frame, frame_no, seconds)
+        start, stop, step = frame_no.indices(self._vid.shape[0])
+        return Video(self._vid[start:stop:step], self.fps)
+
+    def __setitem__(self, frame_no: int, new_val: int):
         if new_val > 255:
-            raise Exception("255 is too great a value to be represented with np.uint8")
+            raise Exception(
+                "255 is too great a value to be represented with np.uint8")
         self._vid[frame_no] = new_val
-    
