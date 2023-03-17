@@ -1,4 +1,5 @@
-from typing import List, Tuple, Union
+from typing import List, Self, Tuple, Union
+from typing_extensions import override
 import cv2 as cv
 import numpy as np
 import pandas as pd
@@ -6,11 +7,11 @@ from numpy.typing import NDArray
 from dataclasses import dataclass
 from collections import deque
 
-FRAME_X = 80
-FRAME_Y = 45
+FRAME_X = 100
+FRAME_Y = 100
 
 
-class Video:
+class VideoReader:
     video: cv.VideoCapture
 
     def __init__(self, path: str):
@@ -32,14 +33,16 @@ class Video:
         frame = cv.resize(frame, (FRAME_X, FRAME_Y),
                           interpolation=cv.INTER_NEAREST)
         return frame
-
-    def get_vid(self, conversion: int) -> NDArray:
-        if not self.video.isOpened():
+    
+    @classmethod
+    def get_vid(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> NDArray:
+        vid_reader = cls(path)
+        if not vid_reader.video.isOpened():
             raise EOFError('File not opened')
         frames = []
-        fps = self.video.get(cv.CAP_PROP_FPS)
+        fps = vid_reader.video.get(cv.CAP_PROP_FPS)
         while True:
-            flag, frame = self.video.read()
+            flag, frame = vid_reader.video.read()
             if not flag:
                 break
             if conversion > 0:
@@ -50,11 +53,11 @@ class Video:
         return np.stack(np.asarray(frames)), int(round(fps))
 
 
-def get_video_from_iterator(path: str) -> Tuple[NDArray, int]:
-    vid = Video(path)
+def get_video_from_iterator(path: str) -> Tuple[NDArray, float]:
+    vid = VideoReader(path)
     fps = vid.video.get(cv.CAP_PROP_FPS)
     video = np.fromiter(vid, np.ndarray)
-    return np.stack(video), int(round(fps))
+    return np.stack(video), fps
 
 
 def get_vid_df(vid: Union[str, NDArray], fps: int = 30,
@@ -62,7 +65,7 @@ def get_vid_df(vid: Union[str, NDArray], fps: int = 30,
                rename: List[str] = [
         'hue', 'lightness', 'saturation']) -> pd.DataFrame:
     if isinstance(vid, str):
-        vid, fps = Video(vid).get_vid(conversion)
+        vid, fps = VideoReader(vid).get_vid(conversion)
     frames = vid.shape[0]
     height = vid.shape[1]
     width = vid.shape[2]
@@ -154,3 +157,54 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     return cdf
 
 
+@dataclass
+class Frame:
+    frame: NDArray
+    frame_no: np.uint64
+    seconds: np.float128
+
+    @property
+    def hue(self):
+        return self.frame[:, :, 0]
+
+    @property
+    def lightness(self):
+        return self.frame[:, :, 1]
+
+    @property
+    def saturation(self):
+        return self.frame[:, :, 1]
+
+
+@dataclass
+class Video:
+    _vid: NDArray
+    fps: float
+
+    @property
+    def hue(self) -> NDArray:
+        return self._vid[:, :, :, 0]
+
+    @property
+    def saturation(self) -> NDArray:
+        return self._vid[:, :, :, 2]
+
+    @property
+    def lightness(self) -> NDArray:
+        return self._vid[:, :, :1]
+
+    @classmethod
+    def from_file(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> Self:
+        vid, fps = VideoReader.get_vid(path,conversion)
+        return cls(vid, fps)
+
+    def __getitem__(self, frame_no: int) -> Frame:
+        frame = self._vid[frame_no]
+        seconds = np.float128(frame_no / self.fps)
+        return Frame(frame,frame_no,seconds)
+    
+    def __setitem__(self,frame_no:int,new_val:int):
+        if new_val > 255:
+            raise Exception("255 is too great a value to be represented with np.uint8")
+        self._vid[frame_no] = new_val
+    
