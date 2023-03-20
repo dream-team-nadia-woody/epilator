@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 from typing import Callable, Union
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike
 
 fourcc = cv.VideoWriter_fourcc(*'mp4v')
 FRAME_WIDTH = 1920
@@ -20,7 +20,7 @@ def vid_frame(frames): return np.zeros(
     (frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
 
 
-def create_vid(path: str, frames: Union[NDArray, Callable], fps=FRAME_FPS):
+def create_vid(path: str, frames: Union[ArrayLike, Callable], fps=FRAME_FPS):
     writer = cv.VideoWriter(path, fourcc,
                             fps, (FRAME_WIDTH, FRAME_HEIGHT))
     for frame in frames:
@@ -29,7 +29,7 @@ def create_vid(path: str, frames: Union[NDArray, Callable], fps=FRAME_FPS):
     return
 
 
-def black_white_flash() -> NDArray:
+def black_white_flash() -> ArrayLike:
     frames = 10 * FRAME_FPS
     white_frame = np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), 255, dtype=np.uint8)
     ret_arr = np.zeros((frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
@@ -56,6 +56,7 @@ def spinning_red():
         cv.rectangle(frame, (x, y), (x+width, y + height), (0, 0, 255), -1)
     return create_vid('videos/Red Spin.mp4', ret_arr)
 
+
 def blue_green_fade():
     ret_frames = vid_frame(768)
     for i in range(256):
@@ -66,7 +67,9 @@ def blue_green_fade():
     ret_frames[512:, :, :, 1] = 255
     for i in range(256):
         ret_frames[512+i, :, :, 0] = 255-i
-    return create_vid('videos/Blue Green Fade.mp4',ret_frames)
+    return create_vid('videos/Blue Green Fade.mp4', ret_frames)
+
+
 def rgb_fade():
     ret_frames = vid_frame(2304)
     for i in range(256):

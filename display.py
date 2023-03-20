@@ -3,20 +3,23 @@ from typing import Iterator, Union
 import pandas as pd
 from cv2 import cvtColor, COLOR_HSV2RGB as hsv_rgb
 from PIL import Image
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike
 import numpy as np
-from video import FRAME_X, FRAME_Y
+from video import FRAME_X, FRAME_Y, Video
 import os
 
 
-def create_image(arr: Union[pd.DataFrame, NDArray], frame_x: int = FRAME_X, frame_y: int = FRAME_Y) -> Image:
+def create_image(arr: Union[pd.DataFrame, ArrayLike],
+                 frame_x: int = FRAME_X,
+                 frame_y: int = FRAME_Y) -> Image:
     if isinstance(arr, pd.DataFrame):
         arr = arr.to_numpy().reshape((frame_x, frame_y, 3))
     arr = cvtColor(arr, hsv_rgb)
     return Image.fromarray(arr)
 
 
-def show_frame(df: pd.DataFrame, frames: Union[int, Iterator], width: int = 5) -> Image:
+def show_frame(df: pd.DataFrame,
+               frames: Union[int, Iterator], width: int = 5) -> Image:
     frame_x = df.index.get_level_values('x').max() + 1
     frame_y = df.index.get_level_values('y').max() + 1
     if isinstance(frames, int):
@@ -35,10 +38,13 @@ def show_frame(df: pd.DataFrame, frames: Union[int, Iterator], width: int = 5) -
     return ret_img
 
 
-def show_sequence(arr: Union[pd.DataFrame,NDArray], n: int = 5) -> Image:
+def show_sequence(arr: Union[pd.DataFrame,
+                             ArrayLike, Video], n: int = 5) -> Image:
     if isinstance(arr, pd.DataFrame):
         arr = arr.to_numpy().reshape(
             (-1, FRAME_Y, FRAME_X, 3))
+    elif isinstance(arr, Video):
+        arr = arr.arr
     if arr.shape[0] < n:
         ret_width = arr.shape[0] * arr.shape[2]
         ret_height = arr.shape[1]
