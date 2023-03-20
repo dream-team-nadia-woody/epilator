@@ -3,10 +3,10 @@ from typing_extensions import override
 import cv2 as cv
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike
 from dataclasses import dataclass
 from collections import deque
-
+from PIL import Image
 FRAME_X = 100
 FRAME_Y = 100
 
@@ -35,7 +35,8 @@ class VideoReader:
         return frame
 
     @classmethod
-    def get_vid(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> NDArray:
+    def get_vid(cls, path: str,
+                conversion: int = cv.COLOR_BGR2HLS) -> ArrayLike:
         vid_reader = cls(path)
         if not vid_reader.video.isOpened():
             raise EOFError('File not opened')
@@ -53,14 +54,14 @@ class VideoReader:
         return np.stack(np.asarray(frames, dtype=np.uint8)), int(round(fps))
 
 
-def get_video_from_iterator(path: str) -> Tuple[NDArray, float]:
+def get_video_from_iterator(path: str) -> Tuple[ArrayLike, float]:
     vid = VideoReader(path)
     fps = vid.video.get(cv.CAP_PROP_FPS)
     video = np.fromiter(vid, np.ndarray)
     return np.stack(video), fps
 
 
-def get_vid_df(vid: Union[str, NDArray], fps: int = 30,
+def get_vid_df(vid: Union[str, ArrayLike], fps: int = 30,
                conversion: int = cv.COLOR_BGR2HLS,
                rename: List[str] = [
         'hue', 'lightness', 'saturation']) -> pd.DataFrame:
@@ -123,7 +124,7 @@ def add_seconds(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def get_exploration_df(vid: Union[str, NDArray], fps: int = 30,
+def get_exploration_df(vid: Union[str, ArrayLike], fps: int = 30,
                        conversion: int = cv.COLOR_BGR2HLS) -> pd.DataFrame:
     '''
     returns a data frame of the video with mask values and seconds added
@@ -162,7 +163,7 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
 
 @dataclass
 class Frame:
-    frame: NDArray
+    frame: ArrayLike
     frame_no: np.uint64
     seconds: np.float128
 
@@ -181,20 +182,20 @@ class Frame:
 
 @dataclass
 class Video:
-    _vid: NDArray
+    _vid: ArrayLike
     fps: float
 
     @property
-    def hue(self) -> NDArray:
+    def hue(self) -> ArrayLike:
         return self._vid[:, :, :, 0]
 
     @property
-    def saturation(self) -> NDArray:
+    def saturation(self) -> ArrayLike:
         return self._vid[:, :, :, 2]
 
     @property
-    def lightness(self) -> NDArray:
-        return self._vid[:, :, :1]
+    def lightness(self) -> ArrayLike:
+        return self._vid[:, :, :, :1]
 
     @property
     def width(self):
@@ -203,6 +204,14 @@ class Video:
     @property
     def height(self):
         return self._vid.shape[1]
+
+    @property
+    def frame_count(self):
+        return self._vid.shape[0]
+
+    @property
+    def arr(self):
+        return self._vid
 
     @classmethod
     def from_file(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> Self:
@@ -222,3 +231,38 @@ class Video:
             raise Exception(
                 "255 is too great a value to be represented with np.uint8")
         self._vid[frame_no] = new_val
+
+    def mask(self, min_threshold: np.uint8 = 100,
+             max_threshold: np.uint8 = 255) -> Self:
+        '''
+        Returns a masked version of the video
+        ## Parameters:
+        min_threshold *(optional)*: the minimum `lightness` value to
+        include in masked video
+        max_threshold *(optional)*: the maximum `lightness` value to
+        include in masked video
+        ## Returns:
+        a new `Video` object containing the masked data
+        '''
+        mask = cv.inRange(self.lightness, min_threshold,
+                          max_threshold).reshape((-1, FRAME_Y, FRAME_X))
+        arr = self._vid.copy()
+        arr[:, :, :, 1] = np.where(mask > 0, np.zeros_like(
+            arr[:, :, :, 1]), arr[:, :, :, 1])
+        return Video(arr, self.fps)
+
+    def show(self, n_width: int = 5) -> Image:
+        if self.frame_count < n_width:
+            ret_width = self.width * self.frame_count
+            ret_height = self.height
+        else:
+            ret_width = self.width * n_width
+            ret_height = self.frame_count * self.height // n_width
+        ret_img = Image.new('RGB', (ret_width, ret_height))
+        for index, frame in enumerate(self._vid):
+            x = self.width * (index % n_width)
+            y = frame.shape[0] * (index // n_width)
+            color_correct = cv.cvtColor(frame, cv.COLOR_HLS2RGB)
+            img = Image.fromarray(color_correct)
+            ret_img.paste(img, (x, y, x + self.width, y + self.height))
+        return ret_img

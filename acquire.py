@@ -20,7 +20,8 @@ hidden_hazard = [
 ]
 
 
-def download_video(url: str, path: str = 'videos/', filename: Union[str, None] = None) -> bool:
+def download_video(url: str, path: str = 'videos/',
+                   filename: Union[str, None] = None) -> bool:
     '''
 
     '''
