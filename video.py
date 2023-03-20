@@ -53,6 +53,111 @@ class VideoReader:
             frames.append(frame)
         return np.stack(np.asarray(frames, dtype=np.uint8)), int(round(fps))
 
+@dataclass
+class Frame:
+    frame: ArrayLike
+    frame_no: np.uint64
+    seconds: np.float128
+
+    @property
+    def hue(self):
+        return self.frame[:, :, 0]
+
+    @property
+    def lightness(self):
+        return self.frame[:, :, 1]
+
+    @property
+    def saturation(self):
+        return self.frame[:, :, 1]
+
+
+@dataclass
+class Video:
+    _vid: ArrayLike
+    fps: float
+
+    @property
+    def hue(self) -> ArrayLike:
+        return self._vid[:, :, :, 0]
+
+    @property
+    def saturation(self) -> ArrayLike:
+        return self._vid[:, :, :, 2]
+
+    @property
+    def lightness(self) -> ArrayLike:
+        return self._vid[:, :, :, :1]
+
+    @property
+    def width(self):
+        return self._vid.shape[2]
+
+    @property
+    def height(self):
+        return self._vid.shape[1]
+
+    @property
+    def frame_count(self):
+        return self._vid.shape[0]
+
+    @property
+    def arr(self):
+        return self._vid
+
+    @classmethod
+    def from_file(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> Self:
+        vid, fps = VideoReader.get_vid(path, conversion)
+        return cls(vid, fps)
+
+    def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
+        if isinstance(frame_no, int):
+            frame = self._vid[frame_no]
+            seconds = np.float128(frame_no / self.fps)
+            return Frame(frame, frame_no, seconds)
+        start, stop, step = frame_no.indices(self._vid.shape[0])
+        return Video(self._vid[start:stop:step], self.fps)
+
+    def __setitem__(self, frame_no: int, new_val: int):
+        if new_val > 255:
+            raise Exception(
+                "255 is too great a value to be represented with np.uint8")
+        self._vid[frame_no] = new_val
+
+    def mask(self, min_threshold: np.uint8 = 100,
+             max_threshold: np.uint8 = 255) -> Self:
+        '''
+        Returns a masked version of the video
+        ## Parameters:
+        min_threshold *(optional)*: the minimum `lightness` value to
+        include in masked video
+        max_threshold *(optional)*: the maximum `lightness` value to
+        include in masked video
+        ## Returns:
+        a new `Video` object containing the masked data
+        '''
+        mask = cv.inRange(self.lightness, min_threshold,
+                          max_threshold).reshape((-1, FRAME_Y, FRAME_X))
+        arr = self._vid.copy()
+        arr[:, :, :, 1] = np.where(mask > 0, np.zeros_like(
+            arr[:, :, :, 1]), arr[:, :, :, 1])
+        return Video(arr, self.fps)
+
+    def show(self, n_width: int = 5) -> Image:
+        if self.frame_count < n_width:
+            ret_width = self.width * self.frame_count
+            ret_height = self.height
+        else:
+            ret_width = self.width * n_width
+            ret_height = self.frame_count * self.height // n_width
+        ret_img = Image.new('RGB', (ret_width, ret_height))
+        for index, frame in enumerate(self._vid):
+            x = self.width * (index % n_width)
+            y = frame.shape[0] * (index // n_width)
+            color_correct = cv.cvtColor(frame, cv.COLOR_HLS2RGB)
+            img = Image.fromarray(color_correct)
+            ret_img.paste(img, (x, y, x + self.width, y + self.height))
+        return ret_img
 
 def get_video_from_iterator(path: str) -> Tuple[ArrayLike, float]:
     vid = VideoReader(path)
@@ -161,108 +266,3 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     return cdf
 
 
-@dataclass
-class Frame:
-    frame: ArrayLike
-    frame_no: np.uint64
-    seconds: np.float128
-
-    @property
-    def hue(self):
-        return self.frame[:, :, 0]
-
-    @property
-    def lightness(self):
-        return self.frame[:, :, 1]
-
-    @property
-    def saturation(self):
-        return self.frame[:, :, 1]
-
-
-@dataclass
-class Video:
-    _vid: ArrayLike
-    fps: float
-
-    @property
-    def hue(self) -> ArrayLike:
-        return self._vid[:, :, :, 0]
-
-    @property
-    def saturation(self) -> ArrayLike:
-        return self._vid[:, :, :, 2]
-
-    @property
-    def lightness(self) -> ArrayLike:
-        return self._vid[:, :, :, :1]
-
-    @property
-    def width(self):
-        return self._vid.shape[2]
-
-    @property
-    def height(self):
-        return self._vid.shape[1]
-
-    @property
-    def frame_count(self):
-        return self._vid.shape[0]
-
-    @property
-    def arr(self):
-        return self._vid
-
-    @classmethod
-    def from_file(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> Self:
-        vid, fps = VideoReader.get_vid(path, conversion)
-        return cls(vid, fps)
-
-    def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
-        if isinstance(frame_no, int):
-            frame = self._vid[frame_no]
-            seconds = np.float128(frame_no / self.fps)
-            return Frame(frame, frame_no, seconds)
-        start, stop, step = frame_no.indices(self._vid.shape[0])
-        return Video(self._vid[start:stop:step], self.fps)
-
-    def __setitem__(self, frame_no: int, new_val: int):
-        if new_val > 255:
-            raise Exception(
-                "255 is too great a value to be represented with np.uint8")
-        self._vid[frame_no] = new_val
-
-    def mask(self, min_threshold: np.uint8 = 100,
-             max_threshold: np.uint8 = 255) -> Self:
-        '''
-        Returns a masked version of the video
-        ## Parameters:
-        min_threshold *(optional)*: the minimum `lightness` value to
-        include in masked video
-        max_threshold *(optional)*: the maximum `lightness` value to
-        include in masked video
-        ## Returns:
-        a new `Video` object containing the masked data
-        '''
-        mask = cv.inRange(self.lightness, min_threshold,
-                          max_threshold).reshape((-1, FRAME_Y, FRAME_X))
-        arr = self._vid.copy()
-        arr[:, :, :, 1] = np.where(mask > 0, np.zeros_like(
-            arr[:, :, :, 1]), arr[:, :, :, 1])
-        return Video(arr, self.fps)
-
-    def show(self, n_width: int = 5) -> Image:
-        if self.frame_count < n_width:
-            ret_width = self.width * self.frame_count
-            ret_height = self.height
-        else:
-            ret_width = self.width * n_width
-            ret_height = self.frame_count * self.height // n_width
-        ret_img = Image.new('RGB', (ret_width, ret_height))
-        for index, frame in enumerate(self._vid):
-            x = self.width * (index % n_width)
-            y = frame.shape[0] * (index // n_width)
-            color_correct = cv.cvtColor(frame, cv.COLOR_HLS2RGB)
-            img = Image.fromarray(color_correct)
-            ret_img.paste(img, (x, y, x + self.width, y + self.height))
-        return ret_img
