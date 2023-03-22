@@ -5,7 +5,7 @@ from numpy.typing import ArrayLike
 import numpy as np
 import pandas as pd
 import cv2 as cv
-from reader import VideoReader
+from video.reader import VideoReader
 
 
 def get_vid_df(vid: Union[str, ArrayLike], fps: int = 30,
