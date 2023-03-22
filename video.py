@@ -7,6 +7,7 @@ from numpy.typing import ArrayLike
 from dataclasses import dataclass
 from collections import deque
 from PIL import Image
+from warnings import warn
 FRAME_X = 100
 FRAME_Y = 100
 
@@ -52,6 +53,7 @@ class VideoReader:
                               interpolation=cv.INTER_NEAREST)
             frames.append(frame)
         return np.stack(np.asarray(frames, dtype=np.uint8)), int(round(fps))
+
 
 @dataclass
 class Frame:
@@ -159,6 +161,7 @@ class Video:
             ret_img.paste(img, (x, y, x + self.width, y + self.height))
         return ret_img
 
+
 def get_video_from_iterator(path: str) -> Tuple[ArrayLike, float]:
     vid = VideoReader(path)
     fps = vid.video.get(cv.CAP_PROP_FPS)
@@ -170,8 +173,11 @@ def get_vid_df(vid: Union[str, ArrayLike], fps: int = 30,
                conversion: int = cv.COLOR_BGR2HLS,
                rename: List[str] = [
         'hue', 'lightness', 'saturation']) -> pd.DataFrame:
+    warn('''video DataFrames will be deprecated in next release. 
+    To continue using, please import video.video_df
+    ''')
     if isinstance(vid, str):
-        vid, fps = VideoReader(vid).get_vid(conversion)
+        vid, fps = VideoReader.get_vid(vid, conversion)
     frames = vid.shape[0]
     height = vid.shape[1]
     width = vid.shape[2]
@@ -207,6 +213,9 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     where 1 - light pixel, 0 - dark pixel
     '''
     # let's try the same but through numpy array
+    warn('''video DataFrames will be deprecated in next release. 
+    To continue using, please import video.video_df
+    ''')
     narr = np.empty((0,), dtype=np.uint8)
     w = df.attrs['width']
     h = df.attrs['height']
@@ -224,6 +233,9 @@ def add_seconds(df: pd.DataFrame) -> pd.DataFrame:
     '''
     Adds columns 'seconds' that shows the second of the video
     '''
+    warn('''video DataFrames will be deprecated in next release. 
+    To continue using, please import video.video_df
+    ''')
     return df.assign(
         seconds=lambda x: x.index.get_level_values('frame') // x.attrs['fps']
     )
@@ -234,6 +246,9 @@ def get_exploration_df(vid: Union[str, ArrayLike], fps: int = 30,
     '''
     returns a data frame of the video with mask values and seconds added
     '''
+    warn('''video DataFrames will be deprecated in next release. 
+    To continue using, please import video.video_df
+    ''')
     df = get_vid_df(vid)
     df = add_mask(df)
     df = add_seconds(df)
@@ -247,6 +262,9 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     lightness, saturation and mask
     '''
     # lightness series
+    warn('''video DataFrames will be deprecated in next release. 
+    To continue using, please import video.video_df
+    ''')
     ls = df.groupby('frame').lightness.mean()
     # hue hls
     hue = df.groupby('frame').hue.mean()
@@ -264,5 +282,3 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return cdf
-
-
