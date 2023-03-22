@@ -174,7 +174,7 @@ def get_vid_df(vid: Union[str, ArrayLike], fps: int = 30,
                rename: List[str] = [
         'hue', 'lightness', 'saturation']) -> pd.DataFrame:
     warn('''video DataFrames will be deprecated in next release. 
-    To continue using, please import video.video_df
+    To continue using, please import video.df
     ''')
     if isinstance(vid, str):
         vid, fps = VideoReader.get_vid(vid, conversion)
@@ -214,7 +214,7 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     '''
     # let's try the same but through numpy array
     warn('''video DataFrames will be deprecated in next release. 
-    To continue using, please import video.video_df
+    To continue using, please import video.df
     ''')
     narr = np.empty((0,), dtype=np.uint8)
     w = df.attrs['width']
@@ -247,7 +247,7 @@ def get_exploration_df(vid: Union[str, ArrayLike], fps: int = 30,
     returns a data frame of the video with mask values and seconds added
     '''
     warn('''video DataFrames will be deprecated in next release. 
-    To continue using, please import video.video_df
+    To continue using, please import video.df
     ''')
     df = get_vid_df(vid)
     df = add_mask(df)
@@ -263,7 +263,7 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     '''
     # lightness series
     warn('''video DataFrames will be deprecated in next release. 
-    To continue using, please import video.video_df
+    To continue using, please import video.df
     ''')
     ls = df.groupby('frame').lightness.mean()
     # hue hls
