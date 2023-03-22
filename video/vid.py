@@ -7,52 +7,7 @@ from numpy.typing import ArrayLike
 from dataclasses import dataclass
 from PIL import Image
 from enum import Enum
-FRAME_X = 120
-FRAME_Y = 90
-
-class VideoReader:
-    video: cv.VideoCapture
-
-    def __init__(self, path: str):
-        self.video = cv.VideoCapture(path)
-
-    def __del__(self):
-        self.video.release()
-
-    def __iter__(self):
-        if not self.video.isOpened():
-            raise StopIteration
-        return self
-
-    def __next__(self):
-        end, frame = self.video.read()
-        if not end:
-            raise StopIteration
-        frame = cv.cvtColor(frame, cv.COLOR_BGR2HLS)
-        frame = cv.resize(frame, (FRAME_X, FRAME_Y),
-                          interpolation=cv.INTER_NEAREST)
-        return frame
-
-    @classmethod
-    def get_vid(cls, path: str,
-                conversion: int = cv.COLOR_BGR2HLS
-                ) -> Tuple[ArrayLike, float]:
-        vid_reader = cls(path)
-        if not vid_reader.video.isOpened():
-            raise EOFError('File not opened')
-        frames = []
-        fps = vid_reader.video.get(cv.CAP_PROP_FPS)
-        while True:
-            flag, frame = vid_reader.video.read()
-            if not flag:
-                break
-            if conversion > 0:
-                frame = cv.cvtColor(frame, conversion)
-            frame = cv.resize(frame, (FRAME_X, FRAME_Y),
-                              interpolation=cv.INTER_NEAREST)
-            frames.append(frame)
-        return np.stack(frames), int(round(fps))
-
+from video.reader import VideoReader, FRAME_X, FRAME_Y
 
 AGG_FUNCS = {
     'sum': lambda x: np.sum(x, axis=1),
@@ -83,8 +38,8 @@ class Frame:
 class Video:
     __vid: ArrayLike
     fps: float
-    convert_in:int = cv.COLOR_BGR2HLS
-    
+    convert_in: int = cv.COLOR_BGR2HLS
+
     def __init__(self, vid: Union[ArrayLike, Self],
                  fps: Union[float, None] = None) -> None:
         if isinstance(vid, Video):
@@ -206,5 +161,3 @@ def get_video_from_iterator(path: str) -> Tuple[ArrayLike, float]:
     fps = vid.video.get(cv.CAP_PROP_FPS)
     video = np.fromiter(vid, np.ndarray)
     return np.stack(video), fps
-
-

@@ -5,8 +5,9 @@ from cv2 import cvtColor, COLOR_HSV2RGB as hsv_rgb
 from PIL import Image
 from numpy.typing import ArrayLike
 import numpy as np
-from video import FRAME_X, FRAME_Y, Video
+from video.reader import FRAME_X, FRAME_Y
 import os
+from video.vid import Video
 
 
 def create_image(arr: Union[pd.DataFrame, ArrayLike],

@@ -5,7 +5,7 @@ import seaborn as sns
 import cv2 as cv
 
 import acquire as ac
-import video as v
+import video.vid as v
 
 import warnings
 warnings.filterwarnings("ignore")
