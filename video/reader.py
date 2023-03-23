@@ -2,6 +2,7 @@ import cv2 as cv
 from numpy.typing import ArrayLike
 from typing import Tuple
 import numpy as np
+from video.conversion import Conversions, Converter
 FRAME_X = 120
 FRAME_Y = 90
 
@@ -37,7 +38,7 @@ class VideoReader:
 
     @classmethod
     def get_vid(cls, path: str,
-                conversion: int = cv.COLOR_BGR2HLS
+                conversion: Conversions = Conversions.HLS
                 ) -> Tuple[ArrayLike, float]:
         '''
         Loads the video file into memory
@@ -59,6 +60,8 @@ class VideoReader:
             flag, frame = vid_reader.video.read()
             if not flag:
                 break
+            if isinstance(conversion, Conversions):
+                conversion = conversion.value.load
             if conversion > 0:
                 frame = cv.cvtColor(frame, conversion)
             frame = cv.resize(frame, (FRAME_X, FRAME_Y),
