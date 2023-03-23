@@ -192,7 +192,9 @@ class Video:
         ## Returns:
         a new `Video` object containing the masked data
         '''
-        mask = cv.inRange(self.lightness, min_threshold,
+        channel = self.lightness.channel.reshape(-1)
+
+        mask = cv.inRange(channel, min_threshold,
                           max_threshold).reshape((-1, FRAME_Y, FRAME_X))
         arr = self.__vid.copy()
         arr[:, :, :, 1] = np.where(mask > 0, np.zeros_like(
