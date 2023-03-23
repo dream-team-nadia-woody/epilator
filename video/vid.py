@@ -8,17 +8,46 @@ from dataclasses import dataclass
 from PIL import Image
 from enum import Enum
 from video.reader import VideoReader, FRAME_X, FRAME_Y
-from conversion import Conversions, Converter
+from video.conversion import Conversions, Converter
 from warnings import warn
-__AGG_FUNCS = {
+AGG_FUNCS = {
     'sum': lambda x: np.sum(x, axis=1),
     'mean': lambda x: np.mean(x, axis=1)
 
 }
 
+AggregatorFunc = Union[Callable, str]
+
+
+@dataclass
+class Channel:
+    '''a wrapper class representing
+    a color channel of a `Video`
+    '''
+    channel: np.ndarray
+    conversion: Converter
+
+    def agg(self, agg: AggregatorFunc) -> ArrayLike:
+        inline = self.channel.reshape((self.channel.shape[0], -1))
+        if isinstance(agg, Callable):
+            return agg(inline)
+        return AGG_FUNCS[agg](inline)
+
+    def pct_change(self, n: int,
+                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
+        agg_arr = self.agg(agg)
+        shifted_arr = np.roll(agg_arr, n)
+        shifted_arr[:n] = np.nan
+        return (agg_arr - shifted_arr) / shifted_arr
+
 
 @dataclass
 class Frame:
+    '''
+    A wrapper class representing the single frame of
+    a video. This prevents issues with reshaping
+    of the array.
+    '''
     frame: ArrayLike
     conversion: Converter
     frame_no: np.uint64
@@ -26,15 +55,15 @@ class Frame:
 
     @property
     def hue(self):
-        return self.frame[:, :, 0]
+        return Channel(self.frame[:, :, 0], self.conversion)
 
     @property
     def lightness(self):
-        return self.frame[:, :, 1]
+        return Channel(self.frame[:, :, 1], self.conversion)
 
     @property
     def saturation(self):
-        return self.frame[:, :, 2]
+        return Channel(self.frame[:, :, 2], self.conversion)
 
 
 class Video:
@@ -63,31 +92,31 @@ class Video:
         self.converter = converter.value
 
     @property
-    def hue(self) -> Union[ArrayLike, None]:
+    def hue(self) -> Union[Channel, None]:
         '''the hue values of the video, if applicable'''
         if (self.converter == Conversions.HLS.value
                 or self.converter == Conversions.HSV.value):
-            return self.__vid[:, :, :, 0]
+            return Channel(self.__vid[:, :, :, 0], self.converter)
 
     @property
-    def saturation(self) -> Union[ArrayLike, None]:
+    def saturation(self) -> Union[Channel, None]:
         '''the saturation values of the video, if applicable'''
         if self.converter == Conversions.HLS.value:
-            return self.__vid[:, :, :, 2]
+            return Channel(self.__vid[:, :, :, 2], self.converter)
         if self.converter == Conversions.HSV.value:
-            return self.__vid[:, :, :, 1]
+            return Channel(self.__vid[:, :, :, 1], self.converter)
 
     @property
-    def lightness(self) -> Union[ArrayLike, None]:
+    def lightness(self) -> Union[Channel, None]:
         '''the lightness values of the video, if applicable'''
-        if self.converter == Conversions.HLS.value
-        return self.__vid[:, :, :, 1]
+        if self.converter == Conversions.HLS.value:
+            return Channel(self.__vid[:, :, :, 1], self.converter)
 
     @property
-    def value(self) -> Union[ArrayLike, None]:
+    def value(self) -> Union[Channel, None]:
         '''the value values of the video, if applicable'''
         if self.converter == Conversions.HSV.value:
-            return self.__vid[:, :, :, 2]
+            return Channel(self.__vid[:, :, :, 2], self.converter)
 
     @property
     def width(self) -> int:
@@ -116,7 +145,8 @@ class Video:
         return self.__vid.shape
 
     @classmethod
-    def from_file(cls, path: str, conversion: Conversions = Conversions.HLS) -> Self:
+    def from_file(cls, path: str,
+                  conversion: Conversions = Conversions.HLS) -> Self:
         '''
         Creates a new video object from file
         ## Parameters:
@@ -170,6 +200,17 @@ class Video:
         return Video(arr, self.fps)
 
     def show(self, n_width: int = 5) -> Image:
+        '''
+        Shows a sequence of frames from a `Video`,
+        `np.ndarray` or `pd.DataFrame`
+        ## Parameters:
+        arr: Either a `Video`, `np.ndarray` or `pd.DataFrame`
+        containing the video to be displayed
+        n: the number of images to display horizontally
+        ## Returns:
+        a `PIL.Image` object of dimensions :
+
+        `(n * [frame width], [frame height] * [frame count] // n)`'''
         if self.frame_count < n_width:
             ret_width = self.width * self.frame_count
             ret_height = self.height
@@ -180,12 +221,48 @@ class Video:
         for index, frame in enumerate(self.__vid):
             x = self.width * (index % n_width)
             y = frame.shape[0] * (index // n_width)
-            color_correct = cv.cvtColor(frame, cv.COLOR_HLS2RGB)
+            color_correct = cv.cvtColor(frame, self.converter.display)
             img = Image.fromarray(color_correct)
             ret_img.paste(img, (x, y, x + self.width, y + self.height))
         return ret_img
 
-    def pct_change(self, n: int):
+    def get_channel(self, channel: Union[ArrayLike, str, int]):
+        match channel:
+            case int():
+                channel = Channel(self.__vid[:, :, :, channel],
+                                  self.converter)
+            case np.ndarray():
+                channel = Channel(channel, self.converter)
+            case Channel():
+                pass
+            case 'hue' | 'h':
+                channel = self.hue
+            case 'saturation' | 'sat' | 's':
+                channel = self.saturation
+            case 'value' | 'v':
+                channel = self.value
+            case 'lightness' | 'l':
+                channel = self.lightness
+            case _:
+                raise ValueError('Channel Value is unsupported')
+        return channel
+
+    def agg(self, channel: Union[ArrayLike, str, int],
+            agg: Union[Callable, str]) -> ArrayLike:
+        '''
+        Aggregates the given the `channel` by `agg` function
+        ## Parameters:
+        channel: either a string or integer representing the channel
+        to be aggregated.
+        agg: function with which to aggregate each frame's values.
+        ## Returns:
+        an `ndarray` containing the aggregated results of `channel`
+        '''
+        channel = self.get_channel(channel)
+        return channel.agg(agg)
+
+    def pct_change(self, n: int, channel: Union[ArrayLike, str, int],
+                   agg: AggregatorFunc = AGG_FUNCS['mean']):
         '''
         Returns the percentage change in lightness between each `n` frames.
         Comperable to `pd.DataFrame.pct_change(n)`
@@ -196,26 +273,5 @@ class Video:
         '''
         if n < 1:
             raise ValueError("n must be greater than or equal to 1")
-
-        agg_arr = self.agg_lightness()
-        shifted_arr = np.roll(agg_arr, n)
-        shifted_arr[:n] = np.nan
-        percent_change = (agg_arr - shifted_arr) / shifted_arr
-
-        return percent_change
-
-    def agg_lightness(self, agg: Union[Callable, str] = __AGG_FUNCS['mean'],
-                      **kwargs) -> ArrayLike:
-        '''
-        Aggregates the lightness channel by a given function
-        ## Parameters:
-        agg: either a string representing the function
-        to use in __AGG_FUNCS or a Callable function
-        which accepts an `ndarray` and returns an `ndarray`.
-        ## Returns:
-        the aggregated values of the video
-        '''
-        inline = self.lightness.reshape((self.frame_count, -1))
-        if isinstance(agg, Callable):
-            return agg(inline, **kwargs)
-        return __AGG_FUNCS[agg](inline, **kwargs)
+        channel = self.get_channel(channel)
+        return channel.pct_change(n)

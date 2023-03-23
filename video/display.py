@@ -12,6 +12,8 @@ from warnings import warn
 
 warn('''This module is deprecated.
 Please use `Video.show()` to achieve the same outcome''')
+
+
 def create_image(arr: Union[pd.DataFrame, ArrayLike],
                  frame_x: int = FRAME_X,
                  frame_y: int = FRAME_Y) -> Image:
@@ -20,17 +22,18 @@ def create_image(arr: Union[pd.DataFrame, ArrayLike],
     arr = cvtColor(arr, hsv_rgb)
     return Image.fromarray(arr)
 
+
 def show_sequence(arr: Union[pd.DataFrame,
                              ArrayLike, Video], n: int = 5) -> Image:
     '''
     Shows a sequence of frames from a `Video` `np.ndarray` or `pd.DataFrame`
     ## Parameters:
-    arr: Either a `Video`, `np.ndarray` or `pd.DataFrame` 
+    arr: Either a `Video`, `np.ndarray` or `pd.DataFrame`
     containing the video to be displayed
     n: the number of images to display horizontally
     ## Returns:
     a `PIL.Image` object of dimensions :
-    
+
     `(n * [frame width], [frame height] * [frame count] // n)`
     '''
     if isinstance(arr, pd.DataFrame):
