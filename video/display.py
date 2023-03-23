@@ -8,8 +8,10 @@ import numpy as np
 from video.reader import FRAME_X, FRAME_Y
 import os
 from video.vid import Video
+from warnings import warn
 
-
+warn('''This module is deprecated.
+Please use `Video.show()` to achieve the same outcome''')
 def create_image(arr: Union[pd.DataFrame, ArrayLike],
                  frame_x: int = FRAME_X,
                  frame_y: int = FRAME_Y) -> Image:
@@ -18,29 +20,19 @@ def create_image(arr: Union[pd.DataFrame, ArrayLike],
     arr = cvtColor(arr, hsv_rgb)
     return Image.fromarray(arr)
 
-
-def show_frame(df: pd.DataFrame,
-               frames: Union[int, Iterator], width: int = 5) -> Image:
-    frame_x = df.index.get_level_values('x').max() + 1
-    frame_y = df.index.get_level_values('y').max() + 1
-    if isinstance(frames, int):
-        frame = df[df.index.get_level_values('frame') == frames]
-        return create_image(frame, frame_x, frame_y)
-    all_frames = [create_image(df[df.index.get_level_values(
-        'frame') == frame], frame_x, frame_y) for frame in frames]
-    ret_width = frame_x * width
-    ret_height = frame_x * ((len(all_frames))//width)
-    print(ret_width, ret_height, frame_x, frame_y)
-    ret_img = Image.new('RGB', (ret_width, ret_height))
-    for index, frame in enumerate(all_frames):
-        x = frame_x * (index % width)
-        y = frame_y * (index // width)
-        ret_img.paste(frame, (x, y, x + frame_x, y + frame_y))
-    return ret_img
-
-
 def show_sequence(arr: Union[pd.DataFrame,
                              ArrayLike, Video], n: int = 5) -> Image:
+    '''
+    Shows a sequence of frames from a `Video` `np.ndarray` or `pd.DataFrame`
+    ## Parameters:
+    arr: Either a `Video`, `np.ndarray` or `pd.DataFrame` 
+    containing the video to be displayed
+    n: the number of images to display horizontally
+    ## Returns:
+    a `PIL.Image` object of dimensions :
+    
+    `(n * [frame width], [frame height] * [frame count] // n)`
+    '''
     if isinstance(arr, pd.DataFrame):
         arr = arr.to_numpy().reshape(
             (-1, FRAME_Y, FRAME_X, 3))

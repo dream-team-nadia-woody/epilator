@@ -12,6 +12,17 @@ def get_vid_df(vid: Union[str, ArrayLike], fps: int = 30,
                conversion: int = cv.COLOR_BGR2HLS,
                rename: List[str] = [
         'hue', 'lightness', 'saturation']) -> pd.DataFrame:
+    '''
+    Loads a video into a Pandas `DataFrame`
+    ## Parameters:
+    vid: either a `np.ndarray` object containing containing the target video or a string with its path
+    fps: the speed of the video in frames per second
+    conversion: the OpenCV color conversion constant with which to convert the video (default is HLS).
+    rename: a `list` to rename the numeric columns to in the finished `DataFrame`.
+    ## Returns:
+    A DataFrame, indexed on the frame and the x and y coordinates of the corresponding pixel, as well
+    as its three color values.
+    '''
     if isinstance(vid, str):
         vid, fps = VideoReader.get_vid(vid, conversion)
     frames = vid.shape[0]

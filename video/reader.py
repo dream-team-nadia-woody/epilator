@@ -7,20 +7,26 @@ FRAME_Y = 90
 
 
 class VideoReader:
+    '''A class which reads in the video from file'''
     video: cv.VideoCapture
 
     def __init__(self, path: str):
+        '''# Parameters:
+        path: the relative path of the video file to be read in.'''
         self.video = cv.VideoCapture(path)
 
     def __del__(self):
+        '''Releases the `VideoCapture` object (frees memory)'''
         self.video.release()
 
     def __iter__(self):
+        '''iterates over the video while open'''
         if not self.video.isOpened():
             raise StopIteration
         return self
 
     def __next__(self):
+        '''Gets the next frame of the video'''
         end, frame = self.video.read()
         if not end:
             raise StopIteration
@@ -33,6 +39,17 @@ class VideoReader:
     def get_vid(cls, path: str,
                 conversion: int = cv.COLOR_BGR2HLS
                 ) -> Tuple[ArrayLike, float]:
+        '''
+        Loads the video file into memory
+        ## Parameters:
+        path: string with the path to the file to be read in
+        conversion: OpenCV constant indicating the color
+        conversion to be performed on the file
+        ## Returns:
+        A `tuple` object containing:
+            - the video at `path` as a `np.ndarray`
+            - the video speed in frames per second
+        '''
         vid_reader = cls(path)
         if not vid_reader.video.isOpened():
             raise EOFError('File not opened')

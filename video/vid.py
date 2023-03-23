@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from PIL import Image
 from enum import Enum
 from video.reader import VideoReader, FRAME_X, FRAME_Y
-
-AGG_FUNCS = {
+from conversion import Conversions, Converter
+from warnings import warn
+__AGG_FUNCS = {
     'sum': lambda x: np.sum(x, axis=1),
     'mean': lambda x: np.mean(x, axis=1)
 
@@ -19,6 +20,7 @@ AGG_FUNCS = {
 @dataclass
 class Frame:
     frame: ArrayLike
+    conversion: Converter
     frame_no: np.uint64
     seconds: np.float128
 
@@ -36,12 +38,20 @@ class Frame:
 
 
 class Video:
+    '''A Class to store videos'''
     __vid: ArrayLike
     fps: float
-    convert_in: int = cv.COLOR_BGR2HLS
+    converter: Converter = Conversions.HLS.value
 
     def __init__(self, vid: Union[ArrayLike, Self],
-                 fps: Union[float, None] = None) -> None:
+                 fps: Union[float, None] = None,
+                 converter:Conversions = Conversions.HLS) -> None:
+        '''
+        Creates a new video object
+        ## Parameters:
+        vid: either an `np.ndarray` or `Video` object
+        fps: the frames per second of the video
+        '''
         if isinstance(vid, Video):
             fps = vid.fps
             vid = vid.__vid
@@ -50,45 +60,83 @@ class Video:
                 'FPS must be provided when converting from ArrayLike')
         self.__vid = vid
         self.fps = fps
+        self.converter = converter.value
 
     @property
-    def hue(self) -> ArrayLike:
-        return self.__vid[:, :, :, 0]
+    def hue(self) ->Union[ArrayLike,None]:
+        '''the hue values of the video, if applicable'''
+        if (self.converter == Conversions.HLS.value
+                or self.converter == Conversions.HSV.value):
+            return self.__vid[:, :, :, 0]
 
     @property
-    def saturation(self) -> ArrayLike:
-        return self.__vid[:, :, :, 2]
+    def saturation(self) -> Union[ArrayLike,None]:
+        '''the saturation values of the video, if applicable'''
+        if self.converter == Conversions.HLS.value:
+            return self.__vid[:, :, :, 2]
+        if self.converter == Conversions.HSV.value:
+            return self.__vid[:,:,:,1]
+
 
     @property
-    def lightness(self) -> ArrayLike:
-        return self.__vid[:, :, :, 1]
+    def lightness(self) -> Union[ArrayLike,None]:
+        '''the lightness values of the video, if applicable'''
+        if self.converter == Conversions.HLS.value
+            return self.__vid[:, :, :, 1]
+    @property
+    def value(self) -> Union[ArrayLike,None]:
+        '''the value values of the video, if applicable'''
+        if self.converter == Conversions.HSV.value:
+            return self.__vid[:, :, :, 2]
 
     @property
-    def width(self):
+    def width(self)->int:
+        '''the width of the video in pixels'''
         return self.__vid.shape[2]
 
     @property
-    def height(self):
+    def height(self)->int:
+        '''the height of the video in pixels'''
         return self.__vid.shape[1]
 
     @property
-    def frame_count(self):
+    def frame_count(self)->int:
+        '''the number of frames in the video'''
         return self.__vid.shape[0]
 
     @property
     def arr(self):
+        '''the video array NOT ADVISED'''
+        warn('used for debugging, not recommended in production')
         return self.__vid
 
     @property
     def shape(self):
+        '''the shape of the underlying array'''
         return self.__vid.shape
 
     @classmethod
-    def from_file(cls, path: str, conversion: int = cv.COLOR_BGR2HLS) -> Self:
+    def from_file(cls, path: str, conversion: Conversions = Conversions.HLS) -> Self:
+        '''
+        Creates a new video object from file
+        ## Parameters:
+        path: string containing the path to the file
+        conversion: `Conversions` enumeration value
+        ## Returns:
+        a new Video object
+        '''
         vid, fps = VideoReader.get_vid(path, conversion)
         return cls(vid, fps)
 
     def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
+        '''
+        Allows for bracket notation in accessing `Video`
+        ## Parameters:
+        frame_no: either an integer or slice of the values to access
+        ## Returns:
+        a `Frame` object if accessing a single frame of the video,
+        else a `Video` referencing the slice of the video
+        '''
         if isinstance(frame_no, int):
             frame = self.__vid[frame_no]
             seconds = np.float128(frame_no / self.fps)
@@ -138,6 +186,14 @@ class Video:
         return ret_img
 
     def pct_change(self, n: int):
+        '''
+        Returns the percentage change in lightness between each `n` frames.
+        Comperable to `pd.DataFrame.pct_change(n)`
+        ## Parameters:
+        n: integer representing the number of frames to look ahead
+        ## Returns:
+        an `ndarray` with the percentage change in frames.
+        '''
         if n < 1:
             raise ValueError("n must be greater than or equal to 1")
 
@@ -148,16 +204,18 @@ class Video:
 
         return percent_change
 
-    def agg_lightness(self, agg: Union[Callable, str] = AGG_FUNCS['mean'],
-                      **kwargs):
+    def agg_lightness(self, agg: Union[Callable, str] = __AGG_FUNCS['mean'],
+                      **kwargs)->ArrayLike:
+        '''
+        Aggregates the lightness channel by a given function
+        ## Parameters:
+        agg: either a string representing the function
+        to use in __AGG_FUNCS or a Callable function
+        which accepts an `ndarray` and returns an `ndarray`.
+        ## Returns:
+        the aggregated values of the video
+        '''
         inline = self.lightness.reshape((self.frame_count, -1))
         if isinstance(agg, Callable):
             return agg(inline, **kwargs)
-        return AGG_FUNCS[agg](inline, **kwargs)
-
-
-def get_video_from_iterator(path: str) -> Tuple[ArrayLike, float]:
-    vid = VideoReader(path)
-    fps = vid.video.get(cv.CAP_PROP_FPS)
-    video = np.fromiter(vid, np.ndarray)
-    return np.stack(video), fps
+        return __AGG_FUNCS[agg](inline, **kwargs)
