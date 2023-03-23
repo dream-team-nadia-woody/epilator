@@ -1,6 +1,6 @@
 from typing import Union
 from pytube import YouTube as yt
-from video_generator import generate_videos
+from video.generator import generate_videos
 
 links = [
     'https://www.youtube.com/watch?v=4LQLvgXLguk',

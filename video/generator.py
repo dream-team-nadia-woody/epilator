@@ -9,18 +9,34 @@ FRAME_HEIGHT = 1080
 FRAME_FPS = 30
 
 
-def black_frame(): return np.zeros(
-    (FRAME_HEIGHT,
-     FRAME_WIDTH,
-     3),
-    dtype=np.uint8)
+def black_frame():
+    '''returns a `np.ndarray` of zeros, 
+    equivalent to an all-black screen'''
+    return np.zeros(
+        (FRAME_HEIGHT,
+         FRAME_WIDTH,
+         3),
+        dtype=np.uint8)
 
 
-def vid_frame(frames): return np.zeros(
-    (frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
+def vid_frame(frames):
+    '''returns a `np.ndarray` of shape:
+
+    ([no. of frames],[frame height], [frame width], 3)'''
+    return np.zeros(
+        (frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
 
 
-def create_vid(path: str, frames: Union[ArrayLike, Callable], fps=FRAME_FPS):
+def create_vid(path: str, frames: ArrayLike, fps=FRAME_FPS):
+    '''
+    Generates a new `.mp4` video of a given array
+    ## Parameters:
+    path: string of the path with which to store the file
+    frames: an `array` of frames to write to the file
+    fps: the desired frames per second of the video 
+    ## Returns:
+    None (writes a video file to `path`)
+    '''
     writer = cv.VideoWriter(path, fourcc,
                             fps, (FRAME_WIDTH, FRAME_HEIGHT))
     for frame in frames:
@@ -29,7 +45,10 @@ def create_vid(path: str, frames: Union[ArrayLike, Callable], fps=FRAME_FPS):
     return
 
 
-def black_white_flash() -> ArrayLike:
+def black_white_flash() -> None:
+    '''
+    creates a video of alternating black and white frames  
+    '''
     frames = 10 * FRAME_FPS
     white_frame = np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), 255, dtype=np.uint8)
     ret_arr = np.zeros((frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
@@ -39,6 +58,7 @@ def black_white_flash() -> ArrayLike:
 
 
 def spinning_red():
+    '''Creates a video of a red screen rotating around a black screen'''
     frames = 10 * FRAME_FPS
     ret_arr = vid_frame(frames)
     width = ret_arr.shape[2] // 2
@@ -58,6 +78,8 @@ def spinning_red():
 
 
 def blue_green_fade():
+    '''creates a video of a frame slowly 
+    fading from black, to blue, to cyan, and to green'''
     ret_frames = vid_frame(768)
     for i in range(256):
         ret_frames[i, :, :, 0] = i
@@ -71,6 +93,7 @@ def blue_green_fade():
 
 
 def rgb_fade():
+    '''generates a video fading between all possible colors'''
     ret_frames = vid_frame(2304)
     for i in range(256):
         ret_frames[i, :, :, 0] = i
@@ -99,6 +122,7 @@ def rgb_fade():
 
 
 def blue_green_flash():
+    '''flashes between blue and green'''
     ret_frames = vid_frame(5 * FRAME_FPS)
     for i, frame in enumerate(ret_frames):
         frame[:, :, i % 2] = 255
@@ -106,6 +130,7 @@ def blue_green_flash():
 
 
 def color_flash():
+    '''flashes between red green and blue'''
     ret_frames = vid_frame(5 * FRAME_FPS)
     for i, frame in enumerate(ret_frames):
         frame[:, :, i % 3] = 255
@@ -113,6 +138,7 @@ def color_flash():
 
 
 def generate_videos():
+    '''generates each of the videos listed above'''
     black_white_flash()
     spinning_red()
     rgb_fade()

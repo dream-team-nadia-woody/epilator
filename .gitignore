@@ -1,4 +1,5 @@
 videos/*
+*/__pycache__/*
 img/*
 video1/*
 video2/*
