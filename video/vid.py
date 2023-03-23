@@ -45,7 +45,7 @@ class Video:
 
     def __init__(self, vid: Union[ArrayLike, Self],
                  fps: Union[float, None] = None,
-                 converter:Conversions = Conversions.HLS) -> None:
+                 converter: Conversions = Conversions.HLS) -> None:
         '''
         Creates a new video object
         ## Parameters:
@@ -63,44 +63,44 @@ class Video:
         self.converter = converter.value
 
     @property
-    def hue(self) ->Union[ArrayLike,None]:
+    def hue(self) -> Union[ArrayLike, None]:
         '''the hue values of the video, if applicable'''
         if (self.converter == Conversions.HLS.value
                 or self.converter == Conversions.HSV.value):
             return self.__vid[:, :, :, 0]
 
     @property
-    def saturation(self) -> Union[ArrayLike,None]:
+    def saturation(self) -> Union[ArrayLike, None]:
         '''the saturation values of the video, if applicable'''
         if self.converter == Conversions.HLS.value:
             return self.__vid[:, :, :, 2]
         if self.converter == Conversions.HSV.value:
-            return self.__vid[:,:,:,1]
-
+            return self.__vid[:, :, :, 1]
 
     @property
-    def lightness(self) -> Union[ArrayLike,None]:
+    def lightness(self) -> Union[ArrayLike, None]:
         '''the lightness values of the video, if applicable'''
         if self.converter == Conversions.HLS.value
-            return self.__vid[:, :, :, 1]
+        return self.__vid[:, :, :, 1]
+
     @property
-    def value(self) -> Union[ArrayLike,None]:
+    def value(self) -> Union[ArrayLike, None]:
         '''the value values of the video, if applicable'''
         if self.converter == Conversions.HSV.value:
             return self.__vid[:, :, :, 2]
 
     @property
-    def width(self)->int:
+    def width(self) -> int:
         '''the width of the video in pixels'''
         return self.__vid.shape[2]
 
     @property
-    def height(self)->int:
+    def height(self) -> int:
         '''the height of the video in pixels'''
         return self.__vid.shape[1]
 
     @property
-    def frame_count(self)->int:
+    def frame_count(self) -> int:
         '''the number of frames in the video'''
         return self.__vid.shape[0]
 
@@ -205,7 +205,7 @@ class Video:
         return percent_change
 
     def agg_lightness(self, agg: Union[Callable, str] = __AGG_FUNCS['mean'],
-                      **kwargs)->ArrayLike:
+                      **kwargs) -> ArrayLike:
         '''
         Aggregates the lightness channel by a given function
         ## Parameters:
