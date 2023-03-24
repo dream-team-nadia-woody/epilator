@@ -4,17 +4,20 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import cv2 as cv
 
+from typing import Union
+
 import acquire as ac
 import video.vid as v
+import video.df as df
 
 import warnings
 warnings.filterwarnings("ignore")
 
-def  frame_vs_sec(df):
+def  frame_vs_sec(adf):
     '''
     plot lightness grouped by frame and grouped by second
     '''
-    fps = df.attrs['fps']
+    fps = adf.attrs['fps']
 
     plt.figure(figsize=(14,5))
     plt.subplot(121)
@@ -28,14 +31,14 @@ def  frame_vs_sec(df):
     plt.show()
 
 
-def frame_diff_changes(df):
+def frame_diff_changes(adf):
     '''
     Create an aggragated data frame, 
     plots values per frame and difference in values per frame
     '''
 
-    cdf = v.get_aggregated_df(df)
-    fps = df.attrs['fps']
+    cdf = df.get_aggregated_df(adf)
+    fps = adf.attrs['fps']
 
     plt.figure(figsize=(20, 20))
     plt.suptitle('Values and Difference in Values')
@@ -77,3 +80,44 @@ def frame_diff_changes(df):
     ax2.set_xlabel('seconds')
 
     plt.show()
+
+def fourier_features(ser: Union[pd.DataFrame, np.array], 
+                    freq: int =30, 
+                    order: int =4) -> pd.DataFrame:
+    '''
+    creates fourier features.
+    ser: pandas series or 1D np.array
+    freq: frequency
+    order: the number of sin/cos waves
+
+    '''
+    time = np.arange(len(ser), dtype=np.float32)
+    k = 2 * np.pi * (1 / freq) * time
+    features = {}
+    for i in range(1, order + 1):
+        features.update({
+            f"sin_{freq}_{i}": np.sin(i * k),
+            f"cos_{freq}_{i}": np.cos(i * k),
+        })
+    return pd.DataFrame(features, index=ser)
+
+def add_fourier_features(df: pd.DataFrame(), 
+                            col_name: str, 
+                            freq:int=30, 
+                            order:int=4) -> pd.DataFrame:
+    '''
+    creates fourier features and adds them to data frame.
+    ser: pandas series or 1D np.array
+    freq: frequency
+    order: the number of sin/cos waves
+
+    '''
+    time = np.arange(len(df), dtype=np.float32)
+    k = 2 * np.pi * (1 / freq) * time
+    features = {}
+    for i in range(1, order + 1):
+        features.update({
+            f"{col_name}_sin_{freq}_{i}": np.sin(i * k),
+            f"{col_name}_cos_{freq}_{i}": np.cos(i * k),
+        })
+    return pd.concat([df, pd.DataFrame(features, index=df.index)], axis=1)
