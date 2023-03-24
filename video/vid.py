@@ -40,6 +40,13 @@ class Channel:
         shifted_arr[:n] = np.nan
         return (agg_arr - shifted_arr) / shifted_arr
 
+    def difference(self, n: int,
+                agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
+        agg_arr = self.agg(agg)
+        shifted_arr = np.roll(agg_arr, n)
+        shifted_arr[:n] = np.nan
+        return agg_arr - shifted_arr
+
 
 @dataclass
 class Frame:
@@ -277,3 +284,18 @@ class Video:
             raise ValueError("n must be greater than or equal to 1")
         channel = self.get_channel(channel)
         return channel.pct_change(n)
+
+    def difference(self, n: int, channel: Union[ArrayLike, str, int],
+                   agg: AggregatorFunc = AGG_FUNCS['mean']):
+        '''
+        Returns the difference in lightness between each `n` frames.
+        
+        ## Parameters:
+        n: integer representing the number of frames to look ahead
+        ## Returns:
+        an `ndarray` with the percentage change in frames.
+        '''
+        if n < 1:
+            raise ValueError("n must be greater than or equal to 1")
+        channel = self.get_channel(channel)
+        return channel.difference(n)
