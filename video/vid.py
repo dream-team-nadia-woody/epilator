@@ -10,6 +10,7 @@ from enum import Enum
 from video.reader import VideoReader, FRAME_X, FRAME_Y
 from video.conversion import Conversions, Converter
 from warnings import warn
+from video.generator import vid_frame
 AGG_FUNCS = {
     'sum': lambda x: np.sum(x, axis=1),
     'mean': lambda x: np.mean(x, axis=1)
@@ -70,7 +71,7 @@ class Video:
     '''A Class to store videos'''
     __vid: ArrayLike
     fps: float
-    converter: Converter = Conversions.HLS.value
+    converter: Converter
 
     def __init__(self, vid: Union[ArrayLike, Self],
                  fps: Union[float, None] = None,
@@ -81,15 +82,14 @@ class Video:
         vid: either an `np.ndarray` or `Video` object
         fps: the frames per second of the video
         '''
-        if isinstance(vid, Video):
-            fps = vid.fps
-            vid = vid.__vid
         if fps is None:
             raise ValueError(
                 'FPS must be provided when converting from ArrayLike')
         self.__vid = vid
         self.fps = fps
-        self.converter = converter.value
+        if isinstance(converter, Conversions):
+            converter = converter.value
+        self.converter = converter
 
     @property
     def hue(self) -> Union[Channel, None]:
@@ -146,7 +146,7 @@ class Video:
 
     @classmethod
     def from_file(cls, path: str,
-                  conversion: Conversions = Conversions.HLS) -> Self:
+                  converter: Conversions = Conversions.HSV) -> Self:
         '''
         Creates a new video object from file
         ## Parameters:
@@ -155,8 +155,8 @@ class Video:
         ## Returns:
         a new Video object
         '''
-        vid, fps = VideoReader.get_vid(path, conversion)
-        return cls(vid, fps)
+        vid, fps = VideoReader.get_vid(path, converter.value.load)
+        return cls(vid, fps, converter)
 
     def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
         '''
@@ -172,7 +172,7 @@ class Video:
             seconds = np.float128(frame_no / self.fps)
             return Frame(frame, frame_no, seconds)
         start, stop, step = frame_no.indices(self.__vid.shape[0])
-        return Video(self.__vid[start:stop:step], self.fps)
+        return Video(self.__vid[start:stop:step], self.fps, self.converter)
 
     def __setitem__(self, frame_no: int, new_val: int):
         if new_val > 255:
@@ -180,7 +180,11 @@ class Video:
                 "255 is too great a value to be represented with np.uint8")
         self.__vid[frame_no] = new_val
 
-    def mask(self, min_threshold: np.uint8 = 100,
+    def copy(self) -> Self:
+        return Video(self.__vid.copy(), self.fps, self.converter)
+
+    def mask(self, channel: Union[ArrayLike, Channel, int, str],
+             min_threshold: np.uint8 = 190,
              max_threshold: np.uint8 = 255) -> Self:
         '''
         Returns a masked version of the video
@@ -192,14 +196,14 @@ class Video:
         ## Returns:
         a new `Video` object containing the masked data
         '''
-        channel = self.lightness.channel.reshape(-1)
+        min = np.zeros(3)
+        max = np.zeros(3)
+        min[channel] = min_threshold
+        max[channel] = max_threshold
+        mask = cv.inRange(self.__vid, min, max)
+        mask = np.where(mask[:,:,:,channel] > 0, self.__vid, mask)
+        return Video(mask, self.fps, self.converter)
 
-        mask = cv.inRange(channel, min_threshold,
-                          max_threshold).reshape((-1, FRAME_Y, FRAME_X))
-        arr = self.__vid.copy()
-        arr[:, :, :, 1] = np.where(mask > 0, np.zeros_like(
-            arr[:, :, :, 1]), arr[:, :, :, 1])
-        return Video(arr, self.fps)
 
     def show(self, n_width: int = 5) -> Image:
         '''
