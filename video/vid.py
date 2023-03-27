@@ -1,148 +1,55 @@
+from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, Self, Tuple, Union
-from typing_extensions import override
+from warnings import warn
+
 import cv2 as cv
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
-from dataclasses import dataclass
 from PIL import Image
-from enum import Enum
-from video.reader import VideoReader, FRAME_X, FRAME_Y
+from typing_extensions import override
+
+from video.channel import AGG_FUNCS, AggregatorFunc, Channel
 from video.conversion import Conversions, Converter
-from warnings import warn
+from video.frame import Frame
 from video.generator import vid_frame
-AGG_FUNCS = {
-    'sum': lambda x: np.sum(x, axis=1),
-    'mean': lambda x: np.mean(x, axis=1)
-
-}
-
-AggregatorFunc = Union[Callable, str]
+from video.reader import FRAME_X, FRAME_Y, VideoReader
+from video.videolike import VideoLike
 
 
-@dataclass
-class Channel:
-    '''a wrapper class representing
-    a color channel of a `Video`
-    '''
-    channel: np.ndarray
-    conversion: Converter
-
-    def agg(self, agg: AggregatorFunc) -> ArrayLike:
-        inline = self.channel.reshape((self.channel.shape[0], -1))
-        if isinstance(agg, Callable):
-            return agg(inline)
-        return AGG_FUNCS[agg](inline)
-
-    def pct_change(self, n: int,
-                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
-        agg_arr = self.agg(agg)
-        shifted_arr = np.roll(agg_arr, n)
-        shifted_arr[:n] = np.nan
-        return (agg_arr - shifted_arr) / shifted_arr
-
-
-@dataclass
-class Frame:
-    '''
-    A wrapper class representing the single frame of
-    a video. This prevents issues with reshaping
-    of the array.
-    '''
-    frame: ArrayLike
-    conversion: Converter
-    frame_no: np.uint64
-    seconds: np.float128
-
-    @property
-    def hue(self):
-        return Channel(self.frame[:, :, 0], self.conversion)
-
-    @property
-    def lightness(self):
-        return Channel(self.frame[:, :, 1], self.conversion)
-
-    @property
-    def saturation(self):
-        return Channel(self.frame[:, :, 2], self.conversion)
-
-
-class Video:
+class Video(VideoLike):
     '''A Class to store videos'''
-    __vid: ArrayLike
     fps: float
     converter: Converter
+    start_time: np.float128
+    end_time: np.float128
 
     def __init__(self, vid: Union[ArrayLike, Self],
                  fps: Union[float, None] = None,
-                 converter: Conversions = Conversions.HLS) -> None:
+                 converter: Conversions = Conversions.HLS,
+                 start_time: Union[float, None] = None,
+                 end_time: Union[float, None] = None,
+                 ) -> None:
         '''
         Creates a new video object
         ## Parameters:
         vid: either an `np.ndarray` or `Video` object
         fps: the frames per second of the video
         '''
-        if fps is None:
-            raise ValueError(
-                'FPS must be provided when converting from ArrayLike')
-        self.__vid = vid
-        self.fps = fps
-        if isinstance(converter, Conversions):
-            converter = converter.value
-        self.converter = converter
-
-    @property
-    def hue(self) -> Union[Channel, None]:
-        '''the hue values of the video, if applicable'''
-        if (self.converter == Conversions.HLS.value
-                or self.converter == Conversions.HSV.value):
-            return Channel(self.__vid[:, :, :, 0], self.converter)
-
-    @property
-    def saturation(self) -> Union[Channel, None]:
-        '''the saturation values of the video, if applicable'''
-        if self.converter == Conversions.HLS.value:
-            return Channel(self.__vid[:, :, :, 2], self.converter)
-        if self.converter == Conversions.HSV.value:
-            return Channel(self.__vid[:, :, :, 1], self.converter)
-
-    @property
-    def lightness(self) -> Union[Channel, None]:
-        '''the lightness values of the video, if applicable'''
-        if self.converter == Conversions.HLS.value:
-            return Channel(self.__vid[:, :, :, 1], self.converter)
-
-    @property
-    def value(self) -> Union[Channel, None]:
-        '''the value values of the video, if applicable'''
-        if self.converter == Conversions.HSV.value:
-            return Channel(self.__vid[:, :, :, 2], self.converter)
-
-    @property
-    def width(self) -> int:
-        '''the width of the video in pixels'''
-        return self.__vid.shape[2]
-
-    @property
-    def height(self) -> int:
-        '''the height of the video in pixels'''
-        return self.__vid.shape[1]
+        super().__init__(vid, fps, converter)
+        if start_time is None:
+            start_time = 0
+        if end_time is None:
+            end_time = vid.shape[0] / fps
+        self.start_time = start_time
+        self.end_time = end_time
 
     @property
     def frame_count(self) -> int:
         '''the number of frames in the video'''
-        return self.__vid.shape[0]
-
-    @property
-    def arr(self):
-        '''the video array NOT ADVISED'''
-        warn('used for debugging, not recommended in production')
-        return self.__vid
-
-    @property
-    def shape(self):
-        '''the shape of the underlying array'''
-        return self.__vid.shape
+        return self.shape[0]
 
     @classmethod
     def from_file(cls, path: str,
@@ -168,42 +75,44 @@ class Video:
         else a `Video` referencing the slice of the video
         '''
         if isinstance(frame_no, int):
-            frame = self.__vid[frame_no]
+            frame = self._vid[frame_no]
             seconds = np.float128(frame_no / self.fps)
-            return Frame(frame, frame_no, seconds)
-        start, stop, step = frame_no.indices(self.__vid.shape[0])
-        return Video(self.__vid[start:stop:step], self.fps, self.converter)
+            return Frame(frame, self.fps, self.converter, frame_no)
+        start, stop, step = frame_no.indices(self._vid.shape[0])
+        return Video(self._vid[start:stop:step], self.fps, self.converter)
 
     def __setitem__(self, frame_no: int, new_val: int):
         if new_val > 255:
             raise Exception(
                 "255 is too great a value to be represented with np.uint8")
-        self.__vid[frame_no] = new_val
+        self._vid[frame_no] = np.full(
+            (self.height, self.width, 3), new_val, dtype=np.uint8)
 
     def copy(self) -> Self:
-        return Video(self.__vid.copy(), self.fps, self.converter)
+        return Video(self._vid.copy(), self.fps, self.converter)
 
-    def mask(self, channel: Union[ArrayLike, Channel, int, str],
-             min_threshold: np.uint8 = 190,
-             max_threshold: np.uint8 = 255) -> Self:
-        '''
-        Returns a masked version of the video
-        ## Parameters:
-        min_threshold *(optional)*: the minimum `lightness` value to
-        include in masked video
-        max_threshold *(optional)*: the maximum `lightness` value to
-        include in masked video
-        ## Returns:
-        a new `Video` object containing the masked data
-        '''
-        min = np.zeros(3)
-        max = np.zeros(3)
-        min[channel] = min_threshold
-        max[channel] = max_threshold
-        mask = cv.inRange(self.__vid, min, max)
-        mask = np.where(mask[:,:,:,channel] > 0, self.__vid, mask)
-        return Video(mask, self.fps, self.converter)
+    def mask_channel(self, channel: Union[str, int],
+                     min_threshold: int = 190,
+                     max_threshold: int = 255) -> 'Video':
+        if isinstance(channel, str):
+            channel_idx = self.get_channel_index(channel)
+        elif isinstance(channel, int):
+            channel_idx = channel
+        else:
+            raise ValueError('Channel value is unsupported')
 
+        masked_vid = self.copy()
+        for i in range(masked_vid._vid.shape[0]):
+            frame = masked_vid._vid[i]
+            channel_data = frame[:, :, channel_idx]
+            lower_bound = np.full(channel_data.shape,
+                                  min_threshold, dtype=np.uint8)
+            upper_bound = np.full(channel_data.shape,
+                                  max_threshold, dtype=np.uint8)
+            mask = cv.inRange(channel_data, lower_bound, upper_bound)
+            frame[:, :, channel_idx] = np.where(mask > 0, channel_data, 0)
+
+        return masked_vid
 
     def show(self, n_width: int = 5) -> Image:
         '''
@@ -224,7 +133,7 @@ class Video:
             ret_width = self.width * n_width
             ret_height = self.frame_count * self.height // n_width
         ret_img = Image.new('RGB', (ret_width, ret_height))
-        for index, frame in enumerate(self.__vid):
+        for index, frame in enumerate(self._vid):
             x = self.width * (index % n_width)
             y = frame.shape[0] * (index // n_width)
             color_correct = cv.cvtColor(frame, self.converter.display)
@@ -235,7 +144,7 @@ class Video:
     def get_channel(self, channel: Union[ArrayLike, str, int]):
         match channel:
             case int():
-                channel = Channel(self.__vid[:, :, :, channel],
+                channel = Channel(self._vid[:, :, :, channel],
                                   self.converter)
             case np.ndarray():
                 channel = Channel(channel, self.converter)
@@ -252,6 +161,24 @@ class Video:
             case _:
                 raise ValueError('Channel Value is unsupported')
         return channel
+
+    def get_channel_index(self, channel_name: str) -> int:
+        match channel_name.lower():
+            case 'hue' | 'h':
+                return 0
+            case 'saturation' | 'sat' | 's':
+                if self.converter == Conversions.HLS.value:
+                    return 2
+                elif self.converter == Conversions.HSV.value:
+                    return 1
+                else:
+                    raise ValueError('Unsupported channel')
+            case 'value' | 'v':
+                return 2
+            case 'lightness' | 'l':
+                return 1
+            case _:
+                raise ValueError('unsupported channel')
 
     def agg(self, channel: Union[ArrayLike, str, int],
             agg: Union[Callable, str]) -> ArrayLike:
