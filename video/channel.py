@@ -29,7 +29,7 @@ class Channel:
             return agg(inline)
         return AGG_FUNCS[agg](inline)
 
-    def pct_change(self, n: int, 
+    def pct_change(self, n: int,
                    agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
         agg_arr = self.agg(agg)
         shifted_arr = np.roll(agg_arr, n)

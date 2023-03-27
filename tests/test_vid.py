@@ -37,11 +37,6 @@ def sample_frame():
                  frame_no=10)
 
 
-@pytest.fixture
-def sample_channel(sample_hsv_video):
-    return sample_hsv_video.saturation
-
-
 def test_channel_agg(sample_channel):
     result = sample_channel.agg('mean')
     assert isinstance(result, np.ndarray)
@@ -55,12 +50,6 @@ def test_channel_pct_change(sample_channel):
     result = sample_channel.pct_change(1)
     assert isinstance(result, np.ndarray)
     assert result.shape == (sample_channel.channel.shape[0],)
-
-
-def test_frame_properties(sample_frame):
-    assert isinstance(sample_frame.hue, Channel)
-    assert isinstance(sample_frame.lightness, Channel)
-    assert isinstance(sample_frame.saturation, Channel)
 
 
 def test_video_properties(sample_hls_video, sample_hsv_video,
@@ -81,6 +70,11 @@ def test_video_properties(sample_hls_video, sample_hsv_video,
     assert isinstance(sample_rgb_video.red, Channel)
     assert isinstance(sample_rgb_video.green, Channel)
     assert isinstance(sample_rgb_video.blue, Channel)
+    with pytest.raises(Exception):
+        sample_hls_video.red
+        sample_hsv_video.green
+        sample_bgr_video.hue
+        sample_rgb_video.saturation
 
 
 def test_video_from_file():
@@ -109,19 +103,34 @@ def test_video_setitem(sample_hls_video):
 def test_video_copy(sample_hls_video):
     copied_video = sample_hls_video.copy()
     assert isinstance(copied_video, Video)
-    assert not np.may_share_memory(copied_video.arr, sample_hls_video.arr)
-
-
-def test_video_mask_channel(sample_hls_video):
-    masked_video = sample_hls_video.mask_channel('h', 100, 200)
-    assert isinstance(masked_video, Video)
-    assert not np.may_share_memory(masked_video.arr, sample_hls_video.arr)
+    assert not np.may_share_memory(copied_video._vid, sample_hls_video._vid)
 
 
 def test_video_get_channel(sample_hls_video):
     channel = sample_hls_video.get_channel('h')
     assert isinstance(channel, Channel)
-    channel = sample_hls_video.get_channel(sample_hls_video.hue)
+    channel = sample_hls_video.get_channel(0)
     assert isinstance(channel, Channel)
     with pytest.raises(ValueError):
         sample_hls_video.get_channel('unsupported')
+
+
+def test_video_agg(sample_hls_video):
+    result = sample_hls_video.agg('h', 'mean')
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (sample_hls_video._vid.shape[0],)
+    result = sample_hls_video.agg(1, lambda x: np.median(x, axis=1))
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (sample_hls_video._vid.shape[0],)
+
+
+def test_video_pct_change(sample_hls_video):
+    result = sample_hls_video.pct_change('hue', 1)
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (sample_hls_video._vid.shape[0],)
+
+
+def test_video_mask(sample_hls_video):
+    result = sample_hls_video.mask('h', 100, 200)
+    assert isinstance(result, Video)
+    assert not np.may_share_memory(result._vid, sample_hls_video._vid)

@@ -2,12 +2,13 @@ import cv2 as cv
 from enum import Enum
 from dataclasses import dataclass
 from typing import Union
+import numpy as np
 
 
 @dataclass
 class Converter:
-    load: Union[int, None]
-    display: Union[int, None]
+    load: int
+    display: int
 
 
 class Conversions(Enum):

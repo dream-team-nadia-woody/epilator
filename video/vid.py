@@ -14,8 +14,6 @@ from typing_extensions import override
 from video.channel import AGG_FUNCS, AggregatorFunc, Channel
 from video.conversion import Conversions, Converter
 from video.frame import Frame
-from video.generator import vid_frame
-from video.reader import FRAME_X, FRAME_Y, VideoReader
 from video.videolike import VideoLike
 
 
@@ -51,20 +49,6 @@ class Video(VideoLike):
         '''the number of frames in the video'''
         return self.shape[0]
 
-    @classmethod
-    def from_file(cls, path: str,
-                  converter: Conversions = Conversions.HSV) -> Self:
-        '''
-        Creates a new video object from file
-        ## Parameters:
-        path: string containing the path to the file
-        conversion: `Conversions` enumeration value
-        ## Returns:
-        a new Video object
-        '''
-        vid, fps = VideoReader.get_vid(path, converter.value.load)
-        return cls(vid, fps, converter)
-
     def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
         '''
         Allows for bracket notation in accessing `Video`
@@ -87,32 +71,6 @@ class Video(VideoLike):
                 "255 is too great a value to be represented with np.uint8")
         self._vid[frame_no] = np.full(
             (self.height, self.width, 3), new_val, dtype=np.uint8)
-
-    def copy(self) -> Self:
-        return Video(self._vid.copy(), self.fps, self.converter)
-
-    def mask_channel(self, channel: Union[str, int],
-                     min_threshold: int = 190,
-                     max_threshold: int = 255) -> 'Video':
-        if isinstance(channel, str):
-            channel_idx = self.get_channel_index(channel)
-        elif isinstance(channel, int):
-            channel_idx = channel
-        else:
-            raise ValueError('Channel value is unsupported')
-
-        masked_vid = self.copy()
-        for i in range(masked_vid._vid.shape[0]):
-            frame = masked_vid._vid[i]
-            channel_data = frame[:, :, channel_idx]
-            lower_bound = np.full(channel_data.shape,
-                                  min_threshold, dtype=np.uint8)
-            upper_bound = np.full(channel_data.shape,
-                                  max_threshold, dtype=np.uint8)
-            mask = cv.inRange(channel_data, lower_bound, upper_bound)
-            frame[:, :, channel_idx] = np.where(mask > 0, channel_data, 0)
-
-        return masked_vid
 
     def show(self, n_width: int = 5) -> Image:
         '''
@@ -140,71 +98,3 @@ class Video(VideoLike):
             img = Image.fromarray(color_correct)
             ret_img.paste(img, (x, y, x + self.width, y + self.height))
         return ret_img
-
-    def get_channel(self, channel: Union[ArrayLike, str, int]):
-        match channel:
-            case int():
-                channel = Channel(self._vid[:, :, :, channel],
-                                  self.converter)
-            case np.ndarray():
-                channel = Channel(channel, self.converter)
-            case Channel():
-                pass
-            case 'hue' | 'h':
-                channel = self.hue
-            case 'saturation' | 'sat' | 's':
-                channel = self.saturation
-            case 'value' | 'v':
-                channel = self.value
-            case 'lightness' | 'l':
-                channel = self.lightness
-            case _:
-                raise ValueError('Channel Value is unsupported')
-        return channel
-
-    def get_channel_index(self, channel_name: str) -> int:
-        match channel_name.lower():
-            case 'hue' | 'h':
-                return 0
-            case 'saturation' | 'sat' | 's':
-                if self.converter == Conversions.HLS.value:
-                    return 2
-                elif self.converter == Conversions.HSV.value:
-                    return 1
-                else:
-                    raise ValueError('Unsupported channel')
-            case 'value' | 'v':
-                return 2
-            case 'lightness' | 'l':
-                return 1
-            case _:
-                raise ValueError('unsupported channel')
-
-    def agg(self, channel: Union[ArrayLike, str, int],
-            agg: Union[Callable, str]) -> ArrayLike:
-        '''
-        Aggregates the given the `channel` by `agg` function
-        ## Parameters:
-        channel: either a string or integer representing the channel
-        to be aggregated.
-        agg: function with which to aggregate each frame's values.
-        ## Returns:
-        an `ndarray` containing the aggregated results of `channel`
-        '''
-        channel = self.get_channel(channel)
-        return channel.agg(agg)
-
-    def pct_change(self, n: int, channel: Union[ArrayLike, str, int],
-                   agg: AggregatorFunc = AGG_FUNCS['mean']):
-        '''
-        Returns the percentage change in lightness between each `n` frames.
-        Comperable to `pd.DataFrame.pct_change(n)`
-        ## Parameters:
-        n: integer representing the number of frames to look ahead
-        ## Returns:
-        an `ndarray` with the percentage change in frames.
-        '''
-        if n < 1:
-            raise ValueError("n must be greater than or equal to 1")
-        channel = self.get_channel(channel)
-        return channel.pct_change(n)

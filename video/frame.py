@@ -1,5 +1,7 @@
+import cv2 as cv
 import numpy as np
 from numpy.typing import ArrayLike
+from PIL import Image
 
 from video.conversion import Converter
 from video.videolike import VideoLike
@@ -21,3 +23,17 @@ class Frame(VideoLike):
         super().__init__(frame, None, conversion)
         self.frame_no = frame_no
         self.seconds = np.float128(frame / fps)
+        self.fps = fps
+
+    def show(self) -> Image:
+        '''
+        Returns the frame as a PIL Image object
+        ## Parameters:
+        None
+        ## Returns:
+        a PIL Image object
+        '''
+        converted_image = self._vid
+        if self.converter.display > 0:
+            cv.cvtColor(self._vid, self.converter.display)
+        return Image.fromarray(converted_image)
