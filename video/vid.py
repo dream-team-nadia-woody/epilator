@@ -36,6 +36,10 @@ class Video(VideoLike):
         vid: either an `np.ndarray` or `Video` object
         fps: the frames per second of the video
         '''
+        if isinstance(vid, Video):
+            fps = vid.fps
+            converter = vid.converter
+            vid = vid._vid
         super().__init__(vid, fps, converter)
         if start_time is None:
             start_time = 0

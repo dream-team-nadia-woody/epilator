@@ -24,6 +24,10 @@ class VideoLike(ABC):
                                   Conversions] = Conversions.HLS) -> None:
         if type(self) == VideoLike:
             raise TypeError('VideoLike is an abstract class')
+        if isinstance(vid, VideoLike):
+            fps = vid.fps
+            converter = vid.converter
+            vid = vid.__vid
         self.__vid = vid
         self.fps = fps
         if isinstance(converter, Conversions):
@@ -178,7 +182,7 @@ class VideoLike(ABC):
             channel >= min_threshold,
             channel <= max_threshold)
         channel[~mask] = 0
-        return type(self)(ret_vid, self.fps, self.converter)
+        return ret_vid
 
     def agg(self, channel: Union[str, int], func: AggregatorFunc) -> Self:
         channel = self.get_channel(channel)
@@ -186,9 +190,10 @@ class VideoLike(ABC):
             func = AGG_FUNCS[func]
         return channel.agg(func)
 
-    def pct_change(self, channel: Union[str, int], periods: int) -> Self:
+    def pct_change(self, channel: Union[str, int], periods: int,
+                   agg:AggregatorFunc) -> Self:
         channel = self.get_channel(channel)
-        return channel.pct_change(periods)
+        return channel.pct_change(periods,agg)
 
     @abstractmethod
     def show(self, n_width: int = 5) -> Image:
