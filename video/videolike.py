@@ -191,11 +191,26 @@ class VideoLike(ABC):
         return channel.agg(func)
 
     def pct_change(self, channel: Union[str, int], periods: int,
-                   agg:AggregatorFunc = AGG_FUNCS['mean']) -> Self:
+                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> Self:
         channel = self.get_channel(channel)
-        return channel.pct_change(periods,agg)
+        return channel.pct_change(periods, agg)
 
     @abstractmethod
     def show(self, n_width: int = 5) -> Image:
         '''shows the video'''
         pass
+
+    def difference(self, n: int, channel: Union[ArrayLike, str, int],
+                   agg: AggregatorFunc = AGG_FUNCS['mean']):
+        '''
+        Returns the difference in lightness between each `n` frames.
+
+        ## Parameters:
+        n: integer representing the number of frames to look ahead
+        ## Returns:
+        an `ndarray` with the percentage change in frames.
+        '''
+        if n < 1:
+            raise ValueError("n must be greater than or equal to 1")
+        channel = self.get_channel(channel)
+        return channel.difference(n)
