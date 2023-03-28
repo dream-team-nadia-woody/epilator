@@ -17,7 +17,61 @@ from video.frame import Frame
 from video.videolike import VideoLike
 
 
-class Video(VideoLike):
+@dataclass
+class Channel:
+    '''a wrapper class representing
+    a color channel of a `Video`
+    '''
+    channel: np.ndarray
+    conversion: Converter
+
+    def agg(self, agg: AggregatorFunc) -> ArrayLike:
+        inline = self.channel.reshape((self.channel.shape[0], -1))
+        if isinstance(agg, Callable):
+            return agg(inline)
+        return AGG_FUNCS[agg](inline)
+
+    def pct_change(self, n: int,
+                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
+        agg_arr = self.agg(agg)
+        shifted_arr = np.roll(agg_arr, n)
+        shifted_arr[:n] = np.nan
+        return (agg_arr - shifted_arr) / shifted_arr
+
+    def difference(self, n: int,
+                agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
+        agg_arr = self.agg(agg)
+        shifted_arr = np.roll(agg_arr, n)
+        shifted_arr[:n] = np.nan
+        return agg_arr - shifted_arr
+
+
+@dataclass
+class Frame:
+    '''
+    A wrapper class representing the single frame of
+    a video. This prevents issues with reshaping
+    of the array.
+    '''
+    frame: ArrayLike
+    conversion: Converter
+    frame_no: np.uint64
+    seconds: np.float128
+
+    @property
+    def hue(self):
+        return Channel(self.frame[:, :, 0], self.conversion)
+
+    @property
+    def lightness(self):
+        return Channel(self.frame[:, :, 1], self.conversion)
+
+    @property
+    def saturation(self):
+        return Channel(self.frame[:, :, 2], self.conversion)
+
+
+class Video:
     '''A Class to store videos'''
     fps: float
     converter: Converter
