@@ -191,7 +191,7 @@ class VideoLike(ABC):
         return channel.agg(func)
 
     def pct_change(self, channel: Union[str, int], periods: int,
-                   agg:AggregatorFunc) -> Self:
+                   agg:AggregatorFunc = AGG_FUNCS['mean']) -> Self:
         channel = self.get_channel(channel)
         return channel.pct_change(periods,agg)
 
