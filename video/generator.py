@@ -131,10 +131,10 @@ def blue_green_flash():
 
 def color_flash():
     '''flashes between red green and blue'''
-    ret_frames = vid_frame(5 * FRAME_FPS)
+    ret_frames = vid_frame(5)
     for i, frame in enumerate(ret_frames):
         frame[:, :, i % 3] = 255
-    return create_vid('videos/Color Flash.mp4', ret_frames)
+    return create_vid('videos/Color Flash (Short).mp4', ret_frames)
 
 
 def generate_videos():
@@ -145,3 +145,5 @@ def generate_videos():
     blue_green_fade()
     blue_green_flash()
     color_flash()
+
+color_flash()
