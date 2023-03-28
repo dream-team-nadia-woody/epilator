@@ -38,7 +38,7 @@ class VideoReader:
 
     @classmethod
     def get_vid(cls, path: str,
-                conversion: int
+                conversion: Conversions = Conversions.HLS
                 ) -> Tuple[ArrayLike, float]:
         '''
         Loads the video file into memory
@@ -60,6 +60,8 @@ class VideoReader:
             flag, frame = vid_reader.video.read()
             if not flag:
                 break
+            if isinstance(conversion, Conversions):
+                conversion = conversion.value.load
             if conversion > 0:
                 frame = cv.cvtColor(frame, conversion)
             frame = cv.resize(frame, (FRAME_X, FRAME_Y),
