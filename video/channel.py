@@ -38,3 +38,9 @@ class Channel:
         else:
             shifted_arr[:n] = 0
         return (agg_arr - shifted_arr) / shifted_arr
+    def difference(self, n: int,
+                agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
+        agg_arr = self.agg(agg)
+        shifted_arr = np.roll(agg_arr, n)
+        shifted_arr[:n] = np.nan
+        return agg_arr - shifted_arr
