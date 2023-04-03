@@ -45,7 +45,8 @@ class VideoLike(ABC):
         '''Returns the hue channel of the video'''
         if (self.converter == Conversions.HLS.value
                 or self.converter == Conversions.HSV.value):
-            return Channel(self.__vid[self.__channel_at_index(0)],
+            return Channel(self.converter.channel_names[0],
+                           self.__vid[self.__channel_at_index(0)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a hue channel')
@@ -53,19 +54,21 @@ class VideoLike(ABC):
     @property
     def saturation(self) -> Channel:
         if self.converter == Conversions.HLS.value:
-            return Channel(self.__vid[self.__channel_at_index(2)],
-                           self.converter)
+            index = 2
         elif self.converter == Conversions.HSV.value:
-            return Channel(self.__vid[self.__channel_at_index(1)],
-                           self.converter)
+            index = 1
         else:
             raise ValueError(
                 'This colorspace does not have a saturation channel')
+        return Channel(self.converter.channel_names[index],
+                       self.__vid[self.__channel_at_index(index)],
+                       self.converter)
 
     @property
     def lightness(self) -> Channel:
         if self.converter == Conversions.HLS.value:
-            return Channel(self.__vid[self.__channel_at_index(1)],
+            return Channel(self.converter.channel_names[1],
+                           self.__vid[self.__channel_at_index(1)],
                            self.converter)
         else:
             raise ValueError(
@@ -74,7 +77,8 @@ class VideoLike(ABC):
     @property
     def value(self) -> Channel:
         if self.converter == Conversions.HSV.value:
-            return Channel(self._vid[self.__channel_at_index(2)],
+            return Channel(self.converter.channel_names[2],
+                           self._vid[self.__channel_at_index(2)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a value channel')
@@ -82,19 +86,21 @@ class VideoLike(ABC):
     @property
     def red(self) -> Channel:
         if self.converter == Conversions.RGB.value:
-            return Channel(self.__vid[self.__channel_at_index(0)],
-                           self.converter)
+            index = 0
         elif self.converter == Conversions.BGR.value:
-            return Channel(self.__vid[self.__channel_at_index(2)],
-                           self.converter)
+            index = 2
         else:
             raise ValueError('This colorspace does not have a red channel')
+        return Channel(self.converter.channel_names[index],
+                       self.__vid[self.__channel_at_index(index)],
+                       self.converter)
 
     @property
     def green(self) -> Channel:
         if (self.converter == Conversions.RGB.value
                 or self.converter == Conversions.BGR.value):
-            return Channel(self.__vid[self.__channel_at_index(1)],
+            return Channel(self.converter.channel_names[1],
+                           self.__vid[self.__channel_at_index(1)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a green channel')
@@ -102,13 +108,14 @@ class VideoLike(ABC):
     @property
     def blue(self) -> Channel:
         if self.converter == Conversions.RGB.value:
-            return Channel(self.__vid[self.__channel_at_index(2)],
-                           self.converter)
+            index = 2
         elif self.converter == Conversions.BGR.value:
-            return Channel(self.__vid[self.__channel_at_index(0)],
-                           self.converter)
+            index = 0
         else:
             raise ValueError('This colorspace does not have a blue channel')
+        return Channel(self.converter.channel_names[index],
+                       self.__vid[self.__channel_at_index(index)],
+                       self.converter)
 
     @property
     def width(self) -> int:
@@ -150,11 +157,14 @@ class VideoLike(ABC):
         vid, fps = VideoReader.get_vid(path, converter.value.load)
         return cls(vid, fps, converter)
 
-    def get_channel(self, channel_name: Union[str, int]) -> Channel:
+    def get_channel(self, channel_name: Union[str, int, Channel]) -> Channel:
         '''returns the channel with the given name'''
         match channel_name:
+            case Channel():
+                return channel_name
             case int():
                 return Channel(
+                    self.converter.channel_names[channel_name],
                     self.__vid[self.__channel_at_index(channel_name)],
                     self.converter)
             case 'hue' | 'h':
@@ -174,26 +184,53 @@ class VideoLike(ABC):
             case _:
                 raise ValueError('Invalid channel name')
 
-    def mask(self, channel: Union[str, int],
-             min_threshold: int, max_threshold: int = 255) -> Self:
+    def mask(self, channel: Union[str, int, None] = None,
+             min_threshold: int = 190, max_threshold: int = 255) -> Self:
         ret_vid = self.copy()
-        channel = ret_vid.get_channel(channel).channel
-        mask = np.logical_and(
-            channel >= min_threshold,
-            channel <= max_threshold)
-        channel[~mask] = 0
+        if channel is not None:
+            masked_channel = ret_vid.get_channel(
+                channel).mask(min_threshold, max_threshold)
+            ret_vid.get_channel(channel).channel = masked_channel.channel
+            return ret_vid
+        for i in range(3):
+            masked_channel = ret_vid.get_channel(i).mask(
+                min_threshold, max_threshold
+            ).channel
+            ret_vid.__vid[ret_vid.__channel_at_index(i)] = masked_channel
         return ret_vid
 
-    def agg(self, channel: Union[str, int], func: AggregatorFunc) -> Self:
-        channel = self.get_channel(channel)
+    def agg(self, func: Union[AggregatorFunc, None] = AGG_FUNCS['sum'],
+            channel: Union[str, int, None] = None) -> Self:
         if isinstance(func, str):
             func = AGG_FUNCS[func]
-        return channel.agg(func)
+        if channel is not None:
+            channel = self.get_channel(channel)
+            return channel.agg(func)
+        if self.__vid.ndim < 4:
+            ret_arr = np.zeros((1, 3), dtype=np.uint64)
+        else:
+            ret_arr = np.zeros((self.__vid.shape[0], 3), dtype=np.uint64)
+        for i in range(3):
+            channel = self.get_channel(i)
+            ret_arr[:, i] = channel.agg(func)
+        return ret_arr
 
-    def pct_change(self, channel: Union[str, int], periods: int,
-                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> Self:
-        channel = self.get_channel(channel)
-        return channel.pct_change(periods, agg)
+    def pct_change(self,
+                   periods: int,
+                   channel: Union[str, int, None] = None,
+                   agg: AggregatorFunc = AGG_FUNCS['sum']) -> Self:
+        if channel is not None:
+            channel = self.get_channel(channel)
+            return channel.pct_change(periods, agg)
+        if self.__vid.ndim < 4:
+            ret_arr = np.zeros((1, 3), dtype=np.uint64)
+        else:
+            print(self.__vid.shape[0])
+            ret_arr = np.zeros((self.__vid.shape[0], 3), dtype=np.uint64)
+        for i in range(3):
+            channel = self.get_channel(i)
+            ret_arr[:, i] = channel.pct_change(periods, agg)
+        return ret_arr
 
     @abstractmethod
     def show(self, n_width: int = 5) -> Image:

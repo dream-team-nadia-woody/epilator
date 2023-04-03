@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-from typing import Callable, Union
+from typing import Callable, Union, Self
 
 import numpy as np
 from numpy.typing import ArrayLike
 from video.conversion import Converter
-
 AGG_FUNCS = {
-    'sum': lambda x: np.sum(x, axis=1),
-    'mean': lambda x: np.mean(x, axis=1)
+    'sum': lambda x: np.sum(x, axis=1,dtype=np.uint64),
+    'mean': lambda x: np.mean(x, axis=1, dtype=np.uint64)
 
 }
 
@@ -20,8 +19,9 @@ class Channel:
     '''a wrapper class representing
     a color channel of a `Video`
     '''
+    channel_name: str
     channel: np.ndarray
-    conversion: Converter
+    converter: Converter
 
     def agg(self, agg: AggregatorFunc) -> ArrayLike:
         inline = self.channel.reshape((self.channel.shape[0], -1))
@@ -38,9 +38,20 @@ class Channel:
         else:
             shifted_arr[:n] = 0
         return (agg_arr - shifted_arr) / shifted_arr
+
     def difference(self, n: int,
-                agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
+                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
         agg_arr = self.agg(agg)
         shifted_arr = np.roll(agg_arr, n)
         shifted_arr[:n] = np.nan
         return agg_arr - shifted_arr
+
+    def mask(self, min_threshold: int = 190, max_threshold: int = 255) -> Self:
+        min_threshold = np.uint8(min_threshold)
+        max_threshold = np.uint8(max_threshold)
+        channel = self.channel.copy()
+        mask = np.logical_and(
+            channel >= min_threshold,
+            channel <= max_threshold)
+        channel[~mask] = 0
+        return Channel(self.channel_name, channel, self.converter)
