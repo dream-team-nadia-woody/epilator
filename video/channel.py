@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 from video.conversion import Converter
 AGG_FUNCS = {
     'sum': lambda x: np.sum(x, axis=1,dtype=np.uint64),
-    'mean': lambda x: np.mean(x, axis=1, dtype=np.uint64)
+    'mean': lambda x: np.mean(x, axis=1, dtype=np.float64)
 
 }
 
@@ -30,14 +30,14 @@ class Channel:
         return AGG_FUNCS[agg](inline)
 
     def pct_change(self, n: int,
-                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
-        agg_arr = self.agg(agg)
+                   agg: AggregatorFunc = AGG_FUNCS['sum']) -> ArrayLike:
+        agg_arr = self.agg(agg).astype(np.float64)
         shifted_arr = np.roll(agg_arr, n)
-        if np.issubdtype(shifted_arr.dtype, np.floating):
-            shifted_arr[:n] = np.nan
-        else:
-            shifted_arr[:n] = 0
-        return (agg_arr - shifted_arr) / shifted_arr
+        shifted_arr[:n] = np.nan
+        with np.errstate(divide='ignore', invalid='ignore'):
+            pct_change_arr = (agg_arr - shifted_arr) / shifted_arr
+        pct_change_arr[np.isnan(pct_change_arr)] = 0
+        return pct_change_arr * 100
 
     def difference(self, n: int,
                    agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:

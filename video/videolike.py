@@ -215,21 +215,22 @@ class VideoLike(ABC):
             ret_arr[:, i] = channel.agg(func)
         return ret_arr
 
-    def pct_change(self,
-                   periods: int,
-                   channel: Union[str, int, None] = None,
-                   agg: AggregatorFunc = AGG_FUNCS['sum']) -> Self:
+
+    def pct_change(self, periods: int, channel: Union[str, int, None] = None,
+                agg: AggregatorFunc = AGG_FUNCS['sum']) -> Self:
         if channel is not None:
             channel = self.get_channel(channel)
             return channel.pct_change(periods, agg)
-        if self.__vid.ndim < 4:
-            ret_arr = np.zeros((1, 3), dtype=np.uint64)
+
+        if self._vid.ndim < 4:
+            ret_arr = np.zeros((1, 3), dtype=np.float64)
         else:
-            print(self.__vid.shape[0])
-            ret_arr = np.zeros((self.__vid.shape[0], 3), dtype=np.uint64)
+            ret_arr = np.zeros((self._vid.shape[0], 3), dtype=np.float64)
+
         for i in range(3):
             channel = self.get_channel(i)
             ret_arr[:, i] = channel.pct_change(periods, agg)
+
         return ret_arr
 
     @abstractmethod
