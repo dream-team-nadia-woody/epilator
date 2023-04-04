@@ -190,14 +190,14 @@ class VideoLike(ABC):
         if channel is not None:
             masked_channel = ret_vid.get_channel(
                 channel).mask(min_threshold, max_threshold)
-            ret_vid.get_channel(channel).channel = masked_channel.channel
+            ret_vid.__vid[..., self.converter.channel_names.index(
+                channel)] = masked_channel.channel[..., 0]
             return ret_vid
         for i in range(3):
             masked_channel = ret_vid.get_channel(i).mask(
-                min_threshold, max_threshold
-            ).channel
-            ret_vid.__vid[ret_vid.__channel_at_index(i)] = masked_channel
-        return ret_vid
+                min_threshold, max_threshold).channel
+            ret_vid.__vid[..., i] = masked_channel[..., 0]
+            return ret_vid
 
     def agg(self, func: Union[AggregatorFunc, None] = AGG_FUNCS['sum'],
             channel: Union[str, int, None] = None) -> Self:
