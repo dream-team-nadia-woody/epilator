@@ -52,7 +52,7 @@ def black_white_flash() -> None:
     frames = 10 * FRAME_FPS
     white_frame = np.full((FRAME_HEIGHT, FRAME_WIDTH, 3), 255, dtype=np.uint8)
     ret_arr = np.zeros((frames, FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
-    for i in range(0, frames, 3):
+    for i in range(0, frames, 2):
         ret_arr[i] = white_frame
     return create_vid('videos/Black White Flash.mp4', ret_arr)
 
@@ -146,4 +146,4 @@ def generate_videos():
     blue_green_flash()
     color_flash()
 
-color_flash()
+black_white_flash()

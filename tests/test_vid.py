@@ -37,20 +37,20 @@ def sample_frame():
                  frame_no=10)
 
 
-def test_channel_agg(sample_channel):
-    result = sample_channel.agg('mean')
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (sample_channel.channel.shape[0],)
-    result = sample_channel.agg(AGG_FUNCS['mean'])
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (sample_channel.channel.shape[0],)
+@pytest.fixture
+def sample_black_vid():
+    arr = np.zeros(shape=(100, 50, 50, 3), dtype=np.uint8)
+    return Video(arr, fps=30, converter=Conversions.HSV)
 
 
-def test_channel_pct_change(sample_channel):
-    result = sample_channel.pct_change(1)
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (sample_channel.channel.shape[0],)
+@pytest.fixture
+def sample_gray_vid():
+    arr = np.full((50, 100, 100, 3), 100, dtype=np.uint8)
+    return Video(arr, fps=30, converter=Conversions.HSV)
 
+@pytest.fixture
+def sample_flashing_vid():
+    return Video.from_file('tests/Black White Flash.mp4')
 
 def test_video_properties(sample_hls_video, sample_hsv_video,
                           sample_bgr_video, sample_rgb_video):
@@ -78,8 +78,8 @@ def test_video_properties(sample_hls_video, sample_hsv_video,
 
 
 def test_video_from_file():
-    video_path = "test_vid.mp4"
-    video = Video.from_file("tests/test_vid.mp4")
+    video_path = "tests/Black White Flash.mp4"
+    video = Video.from_file(video_path)
     assert isinstance(video, Video)
     assert video.frame_count > 0
 
@@ -115,19 +115,16 @@ def test_video_get_channel(sample_hls_video):
         sample_hls_video.get_channel('unsupported')
 
 
-def test_video_agg(sample_hls_video):
-    result = sample_hls_video.agg('h', 'mean')
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (sample_hls_video._vid.shape[0],)
-    result = sample_hls_video.agg(1, lambda x: np.median(x, axis=1))
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (sample_hls_video._vid.shape[0],)
+def test_video_agg(sample_gray_vid, sample_black_vid):
+    result = sample_black_vid.agg('sum')
+    assert np.all(result == 0)
+    result = sample_gray_vid.agg(lambda x: np.mean(x,axis=1))
+    assert np.all(result == 100)
 
 
-def test_video_pct_change(sample_hls_video):
-    result = sample_hls_video.pct_change('hue', 1)
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (sample_hls_video._vid.shape[0],)
+def test_video_pct_change(sample_flashing_vid):
+    result = sample_flashing_vid.pct_change(1,agg='sum')
+    assert np.all(result[:,1:] == 100)
 
 
 def test_video_mask(sample_hls_video):

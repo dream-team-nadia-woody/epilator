@@ -1,10 +1,11 @@
 import cv2 as cv
 from numpy.typing import ArrayLike
-from typing import Tuple
+from typing import List, Tuple, Union
 import numpy as np
 from video.conversion import Conversions, Converter
-FRAME_X = 120
-FRAME_Y = 90
+import os
+FRAME_X = 50
+FRAME_Y = 50
 
 
 class VideoReader:

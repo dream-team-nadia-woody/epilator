@@ -7,7 +7,7 @@ from video.channel import Channel
 @pytest.fixture
 def sample_channel():
     arr = np.random.randint(0, 256, size=(100, 50, 50), dtype=np.uint8)
-    return Channel(arr, Converter(0, 0))
+    return Channel('test', arr, Conversions.HSV.value)
 
 
 def test_channel_agg(sample_channel):
@@ -26,5 +26,7 @@ def test_channel_pct_change(sample_channel):
 
 
 def test_channel_properties(sample_channel):
-    assert sample_channel.conversion == Converter(0, 0)
+    assert sample_channel.converter == Conversions.HSV.value
     assert isinstance(sample_channel.channel, np.ndarray)
+    assert sample_channel.channel.shape == (100, 50, 50)
+    assert sample_channel.channel_name == 'test'
