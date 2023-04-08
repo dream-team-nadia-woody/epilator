@@ -1,4 +1,4 @@
-from typing import Callable, Self, Tuple, Union
+from typing import Callable, List, Self, Tuple, Union
 from warnings import warn
 
 import numpy as np
@@ -17,11 +17,12 @@ class VideoLike(ABC):
     _vid: ArrayLike
     fps: float
     converter: Converter
-
+    segments: int =1
     def __init__(self, vid: Union[ArrayLike, Self],
                  fps: Union[float, None] = None,
                  converter: Union[Converter,
-                                  Conversions] = Conversions.HLS) -> None:
+                                  Conversions] = Conversions.HLS,
+                segments:int = 1) -> None:
         if type(self) == VideoLike:
             raise TypeError('VideoLike is an abstract class')
         if isinstance(vid, VideoLike):
@@ -34,6 +35,7 @@ class VideoLike(ABC):
             self.converter = converter.value
         else:
             self.converter = converter
+        self.segments = segments
 
     def __channel_at_index(self, n: int) -> Tuple[slice]:
         slices = [slice(None)] * self.__vid.ndim
@@ -252,3 +254,8 @@ class VideoLike(ABC):
             raise ValueError("n must be greater than or equal to 1")
         channel = self.get_channel(channel)
         return channel.difference(n)
+    
+    @abstractmethod
+    def segment(self, n: int) -> List[Self]:
+        '''splits the video into n equal parts'''
+        pass

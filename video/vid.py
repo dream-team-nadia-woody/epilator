@@ -30,7 +30,7 @@ class Video(VideoLike):
                  converter: Conversions = Conversions.HLS,
                  start_time: Union[float, None] = None,
                  end_time: Union[float, None] = None,
-                 ) -> None:
+                 segments:int = 1) -> None:
         '''
         Creates a new video object
         ## Parameters:
@@ -41,7 +41,7 @@ class Video(VideoLike):
             fps = vid.fps
             converter = vid.converter
             vid = vid._vid
-        super().__init__(vid, fps, converter)
+        super().__init__(vid, fps, converter,segments)
         if start_time is None:
             start_time = 0
         if end_time is None:
@@ -147,3 +147,25 @@ class Video(VideoLike):
                 agg_vid = masked_vid.agg(agg_func, agg_channel)
             agg_list[video] = agg_vid
         return agg_list
+    
+    def segment(self, n:int) -> Self:
+        '''
+        Segments a video into n^2 segments
+        ## Parameters:
+        n: the number of segments to segment the video into
+        ## Returns:
+        a `Video` object of the segmented video
+        '''
+        new_vid = self._vid.copy()
+        if self.segments > 1:
+            new_frame_count = self.frame_count // self.segments
+            sqrt_segments = int(np.sqrt(self.segments))
+            new_width = self.width * sqrt_segments
+            new_height = self.height * sqrt_segments
+            new_vid = new_vid.reshape((new_frame_count, new_height, new_width, 3))
+        new_frame_count = self.frame_count ** n
+        new_width = self.width // n
+        new_height = self.height // n
+        new_vid = new_vid.reshape((-1, new_height, new_width, 3))
+        return Video(new_vid, self.fps, self.converter, 
+                     self.start_time, self.end_time, n)
