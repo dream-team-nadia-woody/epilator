@@ -34,10 +34,10 @@ def download_video(url: str, path: str = 'videos/',
     return True
 
 
-if __name__ == "__main__":
-    for link in links:
-        download_video(link)
+# if __name__ == "__main__":
+#     for link in links:
+#         download_video(link)
 
-    for link in hidden_hazard:
-        download_video(link)
-    generate_videos()
+#     for link in hidden_hazard:
+#         download_video(link)
+#     generate_videos()
