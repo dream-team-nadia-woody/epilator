@@ -148,7 +148,7 @@ class Video(VideoLike):
             agg_list[video] = agg_vid
         return agg_list
     
-    def segment(self, n:int) -> Self:
+    def segment(self, n: int) -> Self:
         '''
         Segments a video into n^2 segments
         ## Parameters:
@@ -157,15 +157,23 @@ class Video(VideoLike):
         a `Video` object of the segmented video
         '''
         new_vid = self._vid.copy()
-        if self.segments > 1:
-            new_frame_count = self.frame_count // self.segments
-            sqrt_segments = int(np.sqrt(self.segments))
-            new_width = self.width * sqrt_segments
-            new_height = self.height * sqrt_segments
-            new_vid = new_vid.reshape((new_frame_count, new_height, new_width, 3))
-        new_frame_count = self.frame_count ** n
+
+        # Calculate new dimensions
         new_width = self.width // n
         new_height = self.height // n
-        new_vid = new_vid.reshape((-1, new_height, new_width, 3))
-        return Video(new_vid, self.fps, self.converter, 
-                     self.start_time, self.end_time, n)
+        new_frame_count = self.frame_count * n * n
+
+        # Initialize the new array
+        segmented_vid = np.empty((new_frame_count, new_height, new_width, 3), dtype=new_vid.dtype)
+
+        # Segment each frame
+        frame_idx = 0
+        for frame in new_vid:
+            for i in range(n):
+                for j in range(n):
+                    segment = frame[i * new_height:(i + 1) * new_height, j * new_width:(j + 1) * new_width, :]
+                    segmented_vid[frame_idx] = segment
+                    frame_idx += 1
+
+        return Video(segmented_vid, self.fps, self.converter,
+                    self.start_time, self.end_time, n)

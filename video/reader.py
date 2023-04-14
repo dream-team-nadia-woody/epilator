@@ -4,8 +4,8 @@ from typing import List, Tuple, Union
 import numpy as np
 from video.conversion import Conversions, Converter
 import os
-FRAME_X = 50
-FRAME_Y = 50
+FRAME_X = 100
+FRAME_Y = 100
 
 
 class VideoReader:

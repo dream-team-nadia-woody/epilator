@@ -37,3 +37,5 @@ class Frame(VideoLike):
         if self.converter.display > 0:
             cv.cvtColor(self._vid, self.converter.display)
         return Image.fromarray(converted_image)
+    def segment(self,segments:int):
+        pass
