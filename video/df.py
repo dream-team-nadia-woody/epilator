@@ -38,10 +38,13 @@ def get_vid_df(vid: Union[str, ArrayLike], fps: int = 30,
     df['y'] = df.index // width % height
     rename = {key: value for key, value in enumerate(rename)}
     df = df.set_index(['frame', 'y', 'x']).rename(columns=rename)
+
+    # to call attributes -> df.attrs['width']
     df.attrs['height'] = height
     df.attrs['width'] = width
     df.attrs['fps'] = fps
     df.attrs['conversion'] = conversion
+
     return df
 
 
@@ -55,6 +58,19 @@ def get_mask(img: np.array):
     # mask = np.where(255, 1, 0)
 
     return mask
+
+def get_red_mask(img):
+    # mask for hue below 10 hue, lightness, saturation
+    lb = np.array([0,50,50], dtype=np.uint8)
+    ub = np.array([10,255,255], dtype=np.uint8)
+    mask1 = cv.inRange(img, lb, ub)
+
+    # # mask for hue above 340
+    lb1 = np.array([170,50, 50], dtype=np.uint8)
+    ub1 = np.array([180,255, 255], dtype=np.uint8)
+    mask2 = cv.inRange(img, lb1, ub1)
+
+    return mask1 | mask2
 
 
 def add_mask(df: pd.DataFrame) -> pd.DataFrame:
@@ -76,6 +92,25 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
         narr = np.concatenate([narr, mask.reshape(-1)])
     return df.assign(masked_values=narr)
 
+def add_red_mask(df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    calls get_frame() to generate mask for each frame. s
+    aves results in np.array of 1 and 0
+    where 1 - light pixel, 0 - dark pixel
+    '''
+    # let's try the same but through numpy array
+    narr = np.empty((0,), dtype=np.uint8)
+    w = df.attrs['width']
+    h = df.attrs['height']
+    # loop through the frames
+    for f in df.index.levels[0]:
+        # save an image to the variable 'frame'
+        frame = df.loc[f].loc[:, ['hue', 'lightness', 'saturation']].to_numpy().reshape(w, h, 3)
+        # get the mask
+        mask = get_red_mask(frame)
+        narr = np.concatenate([narr, mask.reshape(-1)])
+    return df.assign(red_values=narr)
+
 
 def add_seconds(df: pd.DataFrame) -> pd.DataFrame:
     '''
@@ -93,8 +128,10 @@ def get_exploration_df(vid: Union[str, ArrayLike], fps: int = 30,
     '''
     df = get_vid_df(vid)
     df = add_mask(df)
+    df = add_red_mask(df)
     df = add_seconds(df)
     df.masked_values.replace({255: 1}, inplace=True)
+    df.red_values.replace({255: 1}, inplace=True)
     return df
 
 
@@ -111,13 +148,18 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     saturation = df.groupby('frame').saturation.mean()
     # mask
     mask = df.groupby('frame').masked_values.sum()
+    # red values
+    red = df.groupby('frame').red_values.sum()
 
-    cdf = pd.concat([ls, hue, saturation, mask], axis=1)
+    cdf = pd.concat([ls, hue, saturation, mask, red], axis=1)
     cdf = cdf.assign(
         light_diff=lambda x: x.lightness.shift(1) - x.lightness,
         hue_diff=lambda x: x.hue.shift(1) - x.hue,
         saturation_diff=lambda x: x.saturation.shift(1) - x.saturation,
         mask_diff=lambda x: x.masked_values.shift(1) - x.masked_values
     )
+    # get the width and the height of the frames
+    # width = len(df.index.levels[2])
+    # height = len(df.index.levels[1])
 
     return cdf
