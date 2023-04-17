@@ -103,7 +103,7 @@ def test_video_setitem(sample_hls_video):
 def test_video_copy(sample_hls_video):
     copied_video = sample_hls_video.copy()
     assert isinstance(copied_video, Video)
-    assert not np.may_share_memory(copied_video._vid, sample_hls_video._vid)
+    assert not np.may_share_memory(copied_video.vid, sample_hls_video._vid)
 
 
 def test_video_get_channel(sample_hls_video):
@@ -130,4 +130,4 @@ def test_video_pct_change(sample_flashing_vid):
 def test_video_mask(sample_hls_video):
     result = sample_hls_video.mask('h', 100, 200)
     assert isinstance(result, Video)
-    assert not np.may_share_memory(result._vid, sample_hls_video._vid)
+    assert not np.may_share_memory(result.vid, sample_hls_video._vid)

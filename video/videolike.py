@@ -14,7 +14,7 @@ from PIL import Image
 class VideoLike(ABC):
     '''An abstract class representing a video
     Video and Frame are instances of this class'''
-    _vid: ArrayLike
+    vid: ArrayLike
     fps: float
     converter: Converter
     segments: int =1
@@ -80,7 +80,7 @@ class VideoLike(ABC):
     def value(self) -> Channel:
         if self.converter == Conversions.HSV.value:
             return Channel(self.converter.channel_names[2],
-                           self._vid[self.__channel_at_index(2)],
+                           self.vid[self.__channel_at_index(2)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a value channel')
@@ -132,7 +132,7 @@ class VideoLike(ABC):
         return self.__vid.shape[height_index]
 
     @property
-    def _vid(self) -> ArrayLike:
+    def vid(self) -> ArrayLike:
         '''the numpy array representing the video'''
         return self.__vid
 
@@ -143,7 +143,7 @@ class VideoLike(ABC):
 
     def copy(self) -> Self:
         '''returns a copy of the video'''
-        return type(self)(self._vid.copy(), self.fps, self.converter)
+        return type(self)(self.vid.copy(), self.fps, self.converter)
 
     @classmethod
     def from_file(cls, path: str,
@@ -192,8 +192,11 @@ class VideoLike(ABC):
         if channel is not None:
             masked_channel = ret_vid.get_channel(
                 channel).mask(min_threshold, max_threshold)
-            ret_vid.__vid[..., self.converter.channel_names.index(
-                channel)] = masked_channel.channel[..., 0]
+            bool_arr = masked_channel.channel == 0
+            bool_arr = bool_arr[...,0]
+            for i in range(3):
+                chan = ret_vid.__vid[...,i]
+                chan[bool_arr] = 0
             return ret_vid
         for i in range(3):
             masked_channel = ret_vid.get_channel(i).mask(
@@ -224,10 +227,10 @@ class VideoLike(ABC):
             channel = self.get_channel(channel)
             return channel.pct_change(periods, agg)
 
-        if self._vid.ndim < 4:
+        if self.vid.ndim < 4:
             ret_arr = np.zeros((1, 3), dtype=np.float64)
         else:
-            ret_arr = np.zeros((self._vid.shape[0], 3), dtype=np.float64)
+            ret_arr = np.zeros((self.vid.shape[0], 3), dtype=np.float64)
 
         for i in range(3):
             channel = self.get_channel(i)

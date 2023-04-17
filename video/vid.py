@@ -40,7 +40,7 @@ class Video(VideoLike):
         if isinstance(vid, Video):
             fps = vid.fps
             converter = vid.converter
-            vid = vid._vid
+            vid = vid.vid
         super().__init__(vid, fps, converter,segments)
         if start_time is None:
             start_time = 0
@@ -64,19 +64,19 @@ class Video(VideoLike):
         else a `Video` referencing the slice of the video
         '''
         if isinstance(frame_no, int):
-            frame = self._vid[frame_no]
+            frame = self.vid[frame_no]
             seconds = np.float128(frame_no / self.fps)
             return Frame(frame, self.fps, self.converter, frame_no)
-        start, stop, step = frame_no.indices(self._vid.shape[0])
+        start, stop, step = frame_no.indices(self.vid.shape[0])
         clip_start = self.start_time + (start / self.fps)
         clip_end = self.end_time + (stop / self.fps)
-        return Video(self._vid[start:stop:step], self.fps, self.converter, clip_start, clip_end)
+        return Video(self.vid[start:stop:step], self.fps, self.converter, clip_start, clip_end)
 
     def __setitem__(self, frame_no: int, new_val: int):
         if new_val > 255:
             raise Exception(
                 "255 is too great a value to be represented with np.uint8")
-        self._vid[frame_no] = np.full(
+        self.vid[frame_no] = np.full(
             (self.height, self.width, 3), new_val, dtype=np.uint8)
 
     def show(self, n_width: int = 5) -> Image:
@@ -98,7 +98,7 @@ class Video(VideoLike):
             ret_width = self.width * n_width
             ret_height = self.frame_count * self.height // n_width
         ret_img = Image.new('RGB', (ret_width, ret_height))
-        for index, frame in enumerate(self._vid):
+        for index, frame in enumerate(self.vid):
             x = self.width * (index % n_width)
             y = frame.shape[0] * (index // n_width)
             color_correct = cv.cvtColor(frame, self.converter.display)
@@ -156,7 +156,7 @@ class Video(VideoLike):
         ## Returns:
         a `Video` object of the segmented video
         '''
-        new_vid = self._vid.copy()
+        new_vid = self.vid.copy()
 
         # Calculate new dimensions
         new_width = self.width // n
