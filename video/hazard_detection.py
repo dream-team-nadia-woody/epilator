@@ -45,12 +45,16 @@ def get_lightness_difference(vid: Union[str, ArrayLike], fps: int = 30,
     # return all values but NaN
     return np.diff(av_lightness_per_frame, 1), fps
 
-def find_zero_crossings(lightness_difference: np.array):
+def find_zero_crossings(lightness_difference: np.array, treshold:int = 10):
     ''' 
-    returns indexes of lightness difference array 
+    returns an array of indexes in the lightness difference
     where the element changes the sign
+    if the 
     '''
-    return np.where(np.diff(np.sign(lightness_difference)))[0] + 1
+    ld = lightness_difference.copy()
+    ld = np.where(np.absolute(ld) < treshold, 
+                                    0, ld)
+    return np.where(np.diff(np.sign(ld)))[0] + 1
 
 def extract_windows(arr: np.array, 
                     start: int, end: int, sub_window_size: int):
@@ -70,7 +74,7 @@ def extract_windows(arr: np.array,
     # return np.lib.stride_tricks.sliding_window_view(arr, window_shape=sub_window_size)
     return arr[sub_windows]
 
-def find_hazard_crossings(sliding_windows: np.array, consecutive_numbers=3, fps=30):
+def find_hazard_crossings_sw(sliding_windows: np.array, consecutive_numbers=3, fps=30):
     '''
     Find if there are (3) consecutive numbers of frames in zero_crossing array.
     Parameters:
@@ -91,6 +95,38 @@ def find_hazard_crossings(sliding_windows: np.array, consecutive_numbers=3, fps=
         frame_numbers = np.append(frame_numbers, windows[cond][:, 0])
         # return list of seconds in video that are hazard
     return np.unique(frame_numbers)
+
+'''
+replaces 2 functions above
+:facepalm:
+'''
+def find_hazard_crossings(zero_crossings: np.array, consecutive_numbers=3, fps=30):
+    '''
+    Find if there are (3) consecutive numbers of frames in zero_crossing array.
+    Parameters:
+    sliding_windows: 1D numpy array of zero crossings. 
+    Default is 3. 3 consecutive flashes per second are dangerous
+    Returns:
+    list of indexes that start flashes
+    '''
+    
+    # for every slide in sliding windows of size FPS
+    # create sliding windows of size 3
+    windows = np.lib.stride_tricks.sliding_window_view(zero_crossings, \
+                                window_shape=consecutive_numbers)
+        # check which windows have 3 consectutive numbers 
+    cond = np.all(np.diff(windows, axis=1) == 1, axis = 1)
+    
+    # return list of seconds in video that are hazard
+    return np.unique(windows[cond][:, 0])
+
+def frames_to_seconds(frame_numbers: np.array, fps):
+    ''' 
+    takes a frame numbers
+    returns a list of seconds in the video where the content can cause a seizure
+    '''
+    seconds = frame_numbers / fps.astype(int)
+    return list(set(seconds))
 
 
 
