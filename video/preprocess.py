@@ -89,11 +89,20 @@ def get_sequence(directory: str):
             data['Sequence'].append(sq)
             data['ClassName'].append(class_name)
         # save data into a pickle file
-        with open(pickle, "wb") as outfile1:
+        with open(pickle_path, "wb") as outfile1:
             pickle.dump(data, outfile1)
         return data
 
-def create_padding(sq:Union[list, np.array], pad:str='reflect'):
+def get_max_length(vectors:Union[list, np.array]):
+    return max(len(v) for v in vectors)
+
+def single_video_padding(light_diff: Union[list, np.array], 
+                        max_len: int,
+                        pad:str='reflect'):
+    ''' '''
+    return np.pad(light_diff, (0, max_len - len(light_diff)), pad)
+
+def create_padding(vectors:Union[list, np.array], pad:str='reflect'):
     ''' 
     Used in the next function preprocess_ann()
 
@@ -105,7 +114,7 @@ def create_padding(sq:Union[list, np.array], pad:str='reflect'):
     pad = 'constant' will replace the missing values with zeros
     '''
     # load the values into vectors var
-    vectors = np.array(sq)
+    #vectors = np.array(sq)
 
     # Determine the maximum length of the vectors
     max_len = max(len(v) for v in vectors)
@@ -127,6 +136,14 @@ def create_padding(sq:Union[list, np.array], pad:str='reflect'):
 
     return padded_vectors
 
+def scaler(X_train):
+    ''' 
+    return Standard Scaler ready for transformations
+    '''
+    sc = StandardScaler()
+    X_train = sc.fit(X_train)
+    return sc
+
 def preprocess_ann(data:dict):
     ''' 
     preprocess the data for ANN
@@ -136,12 +153,12 @@ def preprocess_ann(data:dict):
     returns X_train and y_train ready to feed to ANN (only)
     ''' 
     data['Sequence'] = create_padding(data['Sequence'])
-    # data['Sequence] should be converted into numpy array in the previous function
-    X_train = data['Sequence']
+    # np.array just in case :)
+    X_train = np.array(data['Sequence'])
     y_train = np.array(data['ClassName'])
     # scale with Standard Scaler
-    sc = StandardScaler()
-    X_train = sc.fit_transform(X_train)
+    sc = scaler(X_train)
+    X_train = sc.transform(X_train)
     # create numerical values for the categorical labels
     le = LabelEncoder()
     num_labels = le.fit_transform(y_train)
@@ -154,4 +171,20 @@ def preprocess_ann(data:dict):
     y_train = np_utils.to_categorical(y_train)
 
     return X_train, y_train
-        
+
+
+###### GLOBAL VARS
+directory = '../videos1'
+data = get_sequence(directory=directory)
+sq = data['Sequence']
+X_train, y_train = preprocess_ann(data)
+sc = scaler(X_train)
+max_len = get_max_length(sq)
+
+def single_video_preprocess(path:str):
+    ''' '''
+    v = get_lightness_difference(path)
+    v = single_video_padding(v, max_len)
+    v = sc.transform(v.reshape(1,-1))
+
+    return v
