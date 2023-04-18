@@ -48,24 +48,6 @@ def get_lightness_difference(vid: Union[str, ArrayLike], fps: int = 30,
     # return all values but NaN
     return diff_lightness[1:]
 
-def get_lightness_difference1(vid: Union[str, ArrayLike], fps: int = 30,
-               conversion: int = cv.COLOR_BGR2HLS) -> np.array:
-    '''
-    returns an numpy array of difference in mean of lightness between frames.
-    the length of the array = number of video frames - 1
-    '''
-    if isinstance(vid, str):
-        vid, fps = VideoReader.get_vid(vid, conversion)
-    frames = vid.shape[0]
-    height = vid.shape[1]
-    width = vid.shape[2]
-    # creates an numpy array with the lightness values of each frame
-    # the shape of the array is (frames, height*width) f.e. (300, 2500)
-    lightness_per_frame = vid.reshape(-1, 3)[:, 1].reshape((-1, height*width))
-        # agg function
-    av_lightness_per_frame = np.mean(lightness_per_frame,axis=1)
-    # return all values but NaN
-    return np.diff(av_lightness_per_frame, 1)
 
 def get_file_names(directory:str):
     '''
