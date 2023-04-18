@@ -17,12 +17,12 @@ class VideoLike(ABC):
     vid: ArrayLike
     fps: float
     converter: Converter
-    segments: int =1
+
     def __init__(self, vid: Union[ArrayLike, Self],
                  fps: Union[float, None] = None,
                  converter: Union[Converter,
                                   Conversions] = Conversions.HLS,
-                segments:int = 1) -> None:
+                 segments: int = 1) -> None:
         if type(self) == VideoLike:
             raise TypeError('VideoLike is an abstract class')
         if isinstance(vid, VideoLike):
@@ -120,6 +120,12 @@ class VideoLike(ABC):
                        self.converter)
 
     @property
+    def gray(self) -> Channel:
+        if self.converter != Conversions.GRAY.value:
+            gray = self.grayscale()
+        return Channel('gray', self.__vid[..., 0], self.converter)
+
+    @property
     def width(self) -> int:
         '''the width of the video in pixels'''
         width_index = self.__vid.ndim - 2
@@ -193,9 +199,9 @@ class VideoLike(ABC):
             masked_channel = ret_vid.get_channel(
                 channel).mask(min_threshold, max_threshold)
             bool_arr = masked_channel.channel == 0
-            bool_arr = bool_arr[...,0]
+            bool_arr = bool_arr[..., 0]
             for i in range(3):
-                chan = ret_vid.__vid[...,i]
+                chan = ret_vid.__vid[..., i]
                 chan[bool_arr] = 0
             return ret_vid
         for i in range(3):
@@ -220,9 +226,8 @@ class VideoLike(ABC):
             ret_arr[:, i] = channel.agg(func)
         return ret_arr
 
-
     def pct_change(self, periods: int, channel: Union[str, int, None] = None,
-                agg: AggregatorFunc = AGG_FUNCS['mean']) -> Self:
+                   agg: AggregatorFunc = AGG_FUNCS['mean']) -> Self:
         if channel is not None:
             channel = self.get_channel(channel)
             return channel.pct_change(periods, agg)
@@ -257,7 +262,30 @@ class VideoLike(ABC):
             raise ValueError("n must be greater than or equal to 1")
         channel = self.get_channel(channel)
         return channel.difference(n)
-    
+
+    def reconvert(self, new_conversion: Union[
+            Conversions,
+            Converter]) -> Self:
+        ret_vid = self.copy()
+        if isinstance(new_conversion, Conversions):
+            new_conversion = new_conversion.value
+        if ret_vid.converter.bgr > 0:
+            for index, frame in enumerate(ret_vid.__vid):
+                ret_vid.__vid[index] = cv.cvtColor(frame,
+                                                   ret_vid.converter.bgr)
+        if new_conversion.load > 0:
+            for index, frame in enumerate(ret_vid.__vid):
+                ret_vid.__vid[index] = cv.cvtColor(frame,
+                                                   ret_vid.converter.load)
+        ret_vid.converter = new_conversion
+        return ret_vid
+
+    def grayscale(self) -> Self:
+        ret_vid = np.zeros(self.__vid.shape[:-1], dtype=np.uint8)
+        for index, frame in enumerate(self.__vid):
+            ret_vid[index] = cv.cvtColor(frame,  cv.COLOR_BGR2GRAY)
+        return type(self)(ret_vid, self.fps, Conversions.GRAY)
+
     @abstractmethod
     def segment(self, n: int) -> List[Self]:
         '''splits the video into n equal parts'''

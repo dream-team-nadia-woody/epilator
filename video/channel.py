@@ -6,7 +6,8 @@ from numpy.typing import ArrayLike
 from video.conversion import Converter
 AGG_FUNCS = {
     'sum': lambda x: np.sum(x, axis=1,dtype=np.uint64),
-    'mean': lambda x: np.mean(x, axis=1, dtype=np.float64)
+    'mean': lambda x: np.mean(x, axis=1, dtype=np.float64),
+    'absum': lambda x: np.abs(np.sum(x,axis=1,dtype=np.uint64))
 
 }
 

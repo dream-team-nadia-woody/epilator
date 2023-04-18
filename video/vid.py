@@ -101,8 +101,10 @@ class Video(VideoLike):
         for index, frame in enumerate(self.vid):
             x = self.width * (index % n_width)
             y = frame.shape[0] * (index // n_width)
-            color_correct = cv.cvtColor(frame, self.converter.display)
-            img = Image.fromarray(color_correct)
+            if self.converter.display > 0:
+                frame = cv.cvtColor(frame, self.converter.display)
+            img = Image.fromarray(frame)
+            img = img.resize((self.width, self.height), Image.ANTIALIAS)  # Resize the image to the expected dimensions
             ret_img.paste(img, (x, y, x + self.width, y + self.height))
         return ret_img
 
