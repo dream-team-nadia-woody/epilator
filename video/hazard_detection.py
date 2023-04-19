@@ -129,4 +129,8 @@ def frames_to_seconds(frame_numbers: np.array, fps):
     return list(set(seconds))
 
 
+######## RED LIGHT FLASHES #########
+'''
+At the moment counts the frames were red color covers more than 25% of the screen
+'''
 
