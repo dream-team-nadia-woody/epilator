@@ -86,7 +86,7 @@ def add_mask(df: pd.DataFrame) -> pd.DataFrame:
     # loop through the frames
     for f in df.index.levels[0]:
         # save an image to the variable 'frame'
-        frame = df.loc[f].iloc[:, :].to_numpy().reshape(w, h, 3)
+        frame = df.loc[f].iloc[:, :].to_numpy().reshape(h, w, 3)
         # get the mask
         mask = get_mask(frame)
         narr = np.concatenate([narr, mask.reshape(-1)])
@@ -105,7 +105,7 @@ def add_red_mask(df: pd.DataFrame) -> pd.DataFrame:
     # loop through the frames
     for f in df.index.levels[0]:
         # save an image to the variable 'frame'
-        frame = df.loc[f].loc[:, ['hue', 'lightness', 'saturation']].to_numpy().reshape(w, h, 3)
+        frame = df.loc[f].loc[:, ['hue', 'lightness', 'saturation']].to_numpy().reshape(h, w, 3)
         # get the mask
         mask = get_red_mask(frame)
         narr = np.concatenate([narr, mask.reshape(-1)])
