@@ -134,3 +134,52 @@ def frames_to_seconds(frame_numbers: np.array, fps):
 At the moment counts the frames were red color covers more than 25% of the screen
 '''
 
+def get_red_mask(img):
+    # mask for hue below 10 hue, lightness, saturation
+    lb = np.array([0,50,50], dtype=np.uint8)
+    ub = np.array([10,255,255], dtype=np.uint8)
+    mask1 = cv.inRange(img, lb, ub)
+
+    # # mask for hue above 340
+    lb1 = np.array([170,50, 50], dtype=np.uint8)
+    ub1 = np.array([180,255, 255], dtype=np.uint8)
+    mask2 = cv.inRange(img, lb1, ub1)
+
+    return mask1 | mask2
+
+def detect_red_frames_portion(video_path: str):
+    '''
+    detects what % of video frames have red color on more than 25% of the screen
+    '''
+    # get video and fps
+    vid, fps = VideoReader.get_vid(video_path, 
+                conversion=cv.COLOR_BGR2HLS)
+    # get # of frames, width and height of each frame
+    width = vid.shape[2]
+    height = vid.shape[1]
+    frames = vid.shape[0]
+
+    # create en empty array of integers
+    narr = np.empty((0,), dtype=np.uint8)
+    for v in vid:
+        # get video frame
+        frame = v.reshape(height, width, 3)
+        # apply red mask
+        mask = get_red_mask(frame)
+        # append masked values as 1D array narr
+        narr = np.concatenate([narr, mask.reshape(-1)])
+    # narr -> array whith masked red values. represent pixels of each video frame
+    # in the video. if the pixel is red it equals 1 else 0
+    narr = np.where(narr == 255, 1, 0)
+    # count the number of pixels in frame
+    total_pixels_per_frame = width * height
+    
+    # reshape the narr array to the shape of (frame, total pixels)
+    narr = narr.reshape(frames, total_pixels_per_frame)
+
+    red_frames = 0
+    for n in narr:
+        if n.sum() > total_pixels_per_frame / 4:
+            red_frames += 1
+    
+    return round(red_frames / frames * 100, 2)
