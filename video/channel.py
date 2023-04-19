@@ -44,7 +44,10 @@ class Channel:
                    agg: AggregatorFunc = AGG_FUNCS['mean']) -> ArrayLike:
         agg_arr = self.agg(agg)
         shifted_arr = np.roll(agg_arr, n)
-        shifted_arr[:n] = np.nan
+        if shifted_arr.dtype == np.uint:
+            shifted_arr[:n] = 0
+        else:
+            shifted_arr[:n] = np.nan
         return agg_arr - shifted_arr
 
     def mask(self, min_threshold: int = 190, max_threshold: int = 255) -> Self:
