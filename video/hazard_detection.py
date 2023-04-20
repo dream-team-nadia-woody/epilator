@@ -125,7 +125,7 @@ def frames_to_seconds(frame_numbers: np.array, fps):
     takes a frame numbers
     returns a list of seconds in the video where the content can cause a seizure
     '''
-    seconds = frame_numbers / fps.astype(int)
+    seconds = (frame_numbers / fps).astype(int)
     return list(set(seconds))
 
 
@@ -147,9 +147,17 @@ def get_red_mask(img):
 
     return mask1 | mask2
 
-def detect_red_frames_portion(video_path: str):
+def detect_red_light(video_path: str, seconds: bool=True):
     '''
-    detects what % of video frames have red color on more than 25% of the screen
+    Detects what % of video frames have red color on more than 25% of the screen
+    Parameters:
+    videao_path: the path to the video to be analyzed
+
+    Returns:
+    if seconds: 
+        list of seconds where the red light covers more than 25% of the screen
+    else: 
+        the proportion of the video frames with the red light values covering more than 25% of the screen
     '''
     # get video and fps
     vid, fps = VideoReader.get_vid(video_path, 
@@ -178,8 +186,13 @@ def detect_red_frames_portion(video_path: str):
     narr = narr.reshape(frames, total_pixels_per_frame)
 
     red_frames = 0
+    sec = []
     for n in narr:
         if n.sum() > total_pixels_per_frame / 4:
             red_frames += 1
+            sec.append((n / fps).astype(int))
     
-    return round(red_frames / frames * 100, 2)
+    if seconds:
+        return sec
+    else:
+        return round(red_frames / frames * 100, 2)
