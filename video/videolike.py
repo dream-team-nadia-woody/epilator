@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 from abc import ABC, abstractmethod
 from video.channel import Channel, AGG_FUNCS, AggregatorFunc
 from video.conversion import Conversions, Converter
-from video.reader import VideoReader
+from video.reader import VideoReader, FRAME_X,FRAME_Y
 import cv2 as cv
 from PIL import Image
 
@@ -14,7 +14,7 @@ from PIL import Image
 class VideoLike(ABC):
     '''An abstract class representing a video
     Video and Frame are instances of this class'''
-    _vid: ArrayLike
+    vid: ArrayLike
     fps: float
     converter: Converter
 
@@ -28,8 +28,8 @@ class VideoLike(ABC):
         if isinstance(vid, VideoLike):
             fps = vid.fps
             converter = vid.converter
-            vid = vid._vid
-        self._vid = vid
+            vid = vid.vid
+        self.vid = vid
         self.fps = fps
         if isinstance(converter, Conversions):
             self.converter = converter.value
@@ -38,7 +38,7 @@ class VideoLike(ABC):
         self.segments = segments
 
     def __channel_at_index(self, n: int) -> Tuple[slice]:
-        slices = [slice(None)] * self._vid.ndim
+        slices = [slice(None)] * self.vid.ndim
         slices[len(slices)-1] = slice(n, n+1, 1)
         return tuple(slices)
 
@@ -48,7 +48,7 @@ class VideoLike(ABC):
         if (self.converter == Conversions.HLS.value
                 or self.converter == Conversions.HSV.value):
             return Channel(self.converter.channel_names[0],
-                           self._vid[self.__channel_at_index(0)],
+                           self.vid[self.__channel_at_index(0)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a hue channel')
@@ -63,14 +63,14 @@ class VideoLike(ABC):
             raise ValueError(
                 'This colorspace does not have a saturation channel')
         return Channel(self.converter.channel_names[index],
-                       self._vid[self.__channel_at_index(index)],
+                       self.vid[self.__channel_at_index(index)],
                        self.converter)
 
     @property
     def lightness(self) -> Channel:
         if self.converter == Conversions.HLS.value:
             return Channel(self.converter.channel_names[1],
-                           self._vid[self.__channel_at_index(1)],
+                           self.vid[self.__channel_at_index(1)],
                            self.converter)
         else:
             raise ValueError(
@@ -80,7 +80,7 @@ class VideoLike(ABC):
     def value(self) -> Channel:
         if self.converter == Conversions.HSV.value:
             return Channel(self.converter.channel_names[2],
-                           self._vid[self.__channel_at_index(2)],
+                           self.vid[self.__channel_at_index(2)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a value channel')
@@ -94,7 +94,7 @@ class VideoLike(ABC):
         else:
             raise ValueError('This colorspace does not have a red channel')
         return Channel(self.converter.channel_names[index],
-                       self._vid[self.__channel_at_index(index)],
+                       self.vid[self.__channel_at_index(index)],
                        self.converter)
 
     @property
@@ -102,7 +102,7 @@ class VideoLike(ABC):
         if (self.converter == Conversions.RGB.value
                 or self.converter == Conversions.BGR.value):
             return Channel(self.converter.channel_names[1],
-                           self._vid[self.__channel_at_index(1)],
+                           self.vid[self.__channel_at_index(1)],
                            self.converter)
         else:
             raise ValueError('This colorspace does not have a green channel')
@@ -116,39 +116,40 @@ class VideoLike(ABC):
         else:
             raise ValueError('This colorspace does not have a blue channel')
         return Channel(self.converter.channel_names[index],
-                       self._vid[self.__channel_at_index(index)],
+                       self.vid[self.__channel_at_index(index)],
                        self.converter)
 
     @property
     def gray(self) -> Channel:
         if self.converter != Conversions.GRAY.value:
             gray = self.grayscale()
-        return Channel('gray', self._vid[..., 0], self.converter)
+        return Channel('gray', self.vid[..., 0], self.converter)
 
     @property
     def width(self) -> int:
         '''the width of the video in pixels'''
-        width_index = self._vid.ndim - 2
-        return self._vid.shape[width_index]
+        width_index = self.vid.ndim - 2
+        return self.vid.shape[width_index]
 
     @property
     def height(self) -> int:
         '''the height of the video in pixels'''
-        height_index = self._vid.ndim - 3
-        return self._vid.shape[height_index]
+        height_index = self.vid.ndim - 3
+        return self.vid.shape[height_index]
 
     @property
     def shape(self) -> Tuple[int]:
         '''the shape of the video'''
-        return self._vid.shape
+        return self.vid.shape
 
     def copy(self) -> Self:
         '''returns a copy of the video'''
-        return type(self)(self._vid.copy(), self.fps, self.converter)
+        return type(self)(self.vid.copy(), self.fps, self.converter)
 
     @classmethod
     def from_file(cls, path: str,
-                  converter: Conversions = Conversions.HSV) -> Self:
+                  converter: Conversions = Conversions.HSV,
+                  resize:Tuple[int,int] = (FRAME_X,FRAME_Y)) -> Self:
         '''
         Creates a new video object from file
         ## Parameters:
@@ -157,7 +158,7 @@ class VideoLike(ABC):
         ## Returns:
         a new Video object
         '''
-        vid, fps = VideoReader.get_vid(path, converter.value.load)
+        vid, fps = VideoReader.get_vid(path, converter.value.load,resize)
         return cls(vid, fps, converter)
 
     def get_channel(self, channel_name: Union[str, int, Channel]) -> Channel:
@@ -168,7 +169,7 @@ class VideoLike(ABC):
             case int():
                 return Channel(
                     self.converter.channel_names[channel_name],
-                    self._vid[self.__channel_at_index(channel_name)],
+                    self.vid[self.__channel_at_index(channel_name)],
                     self.converter)
             case 'hue' | 'h':
                 return self.hue
@@ -198,16 +199,16 @@ class VideoLike(ABC):
                 index = self.converter.channel_names.index(
                     channel.channel_name)
                 
-                ret_vid._vid[...,index][~mask] = 0
+                ret_vid.vid[...,index][~mask] = 0
                 return ret_vid
             for i in range(3):
-                chan = ret_vid._vid[..., i]
+                chan = ret_vid.vid[..., i]
                 chan[~mask] = 0
             return ret_vid
         for i in range(3):
             mask = ret_vid.get_channel(i).mask(
                 min_threshold, max_threshold).channel
-            ret_vid._vid[..., i] = mask[..., 0]
+            ret_vid.vid[..., i] = mask[..., 0]
             return ret_vid
 
     def agg(self, func: Union[AggregatorFunc, None] = AGG_FUNCS['sum'],
@@ -217,10 +218,10 @@ class VideoLike(ABC):
         if channel is not None:
             channel = self.get_channel(channel)
             return channel.agg(func)
-        if self._vid.ndim < 4:
+        if self.vid.ndim < 4:
             ret_arr = np.zeros((1, 3), dtype=np.uint64)
         else:
-            ret_arr = np.zeros((self._vid.shape[0], 3), dtype=np.uint64)
+            ret_arr = np.zeros((self.vid.shape[0], 3), dtype=np.uint64)
         for i in range(3):
             channel = self.get_channel(i)
             ret_arr[:, i] = channel.agg(func)
@@ -232,10 +233,10 @@ class VideoLike(ABC):
             channel = self.get_channel(channel)
             return channel.pct_change(periods, agg)
 
-        if self._vid.ndim < 4:
+        if self.vid.ndim < 4:
             ret_arr = np.zeros((1, 3), dtype=np.float64)
         else:
-            ret_arr = np.zeros((self._vid.shape[0], 3), dtype=np.float64)
+            ret_arr = np.zeros((self.vid.shape[0], 3), dtype=np.float64)
 
         for i in range(3):
             channel = self.get_channel(i)
@@ -270,19 +271,19 @@ class VideoLike(ABC):
         if isinstance(new_conversion, Conversions):
             new_conversion = new_conversion.value
         if ret_vid.converter.bgr > 0:
-            for index, frame in enumerate(ret_vid._vid):
-                ret_vid._vid[index] = cv.cvtColor(frame,
+            for index, frame in enumerate(ret_vid.vid):
+                ret_vid.vid[index] = cv.cvtColor(frame,
                                                   ret_vid.converter.bgr)
         if new_conversion.load > 0:
-            for index, frame in enumerate(ret_vid._vid):
-                ret_vid._vid[index] = cv.cvtColor(frame,
+            for index, frame in enumerate(ret_vid.vid):
+                ret_vid.vid[index] = cv.cvtColor(frame,
                                                   ret_vid.converter.load)
         ret_vid.converter = new_conversion
         return ret_vid
 
     def grayscale(self) -> Self:
-        ret_vid = np.zeros(self._vid.shape[:-1], dtype=np.uint8)
-        for index, frame in enumerate(self._vid):
+        ret_vid = np.zeros(self.vid.shape[:-1], dtype=np.uint8)
+        for index, frame in enumerate(self.vid):
             ret_vid[index] = cv.cvtColor(frame,  cv.COLOR_BGR2GRAY)
         return type(self)(ret_vid, self.fps, Conversions.GRAY)
 

@@ -39,7 +39,8 @@ class VideoReader:
 
     @classmethod
     def get_vid(cls, path: str,
-                conversion: int
+                conversion: int,
+                resize:Tuple[int,int] = (FRAME_X,FRAME_Y)
                 ) -> Tuple[ArrayLike, float]:
         '''
         Loads the video file into memory
@@ -63,7 +64,7 @@ class VideoReader:
                 break
             if conversion > 0:
                 frame = cv.cvtColor(frame, conversion)
-            frame = cv.resize(frame, (FRAME_X, FRAME_Y),
+            frame = cv.resize(frame, resize,
                               interpolation=cv.INTER_NEAREST)
             frames.append(frame)
         return np.stack(frames), int(round(fps))
