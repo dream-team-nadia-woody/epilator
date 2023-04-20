@@ -48,6 +48,7 @@ def get_lightness_difference(vid: Union[str, ArrayLike], fps: int = 30,
     # return all values but NaN
     return diff_lightness[1:]
 
+
 def get_file_names(directory:str):
     '''
     returns the list of video files in the directory
@@ -173,18 +174,18 @@ def preprocess_ann(data:dict):
     return X_train, y_train
 
 
-###### GLOBAL VARS
-directory = '../videos1'
-data = get_sequence(directory=directory)
-sq = data['Sequence']
-X_train, y_train = preprocess_ann(data)
-sc = scaler(X_train)
-max_len = get_max_length(sq)
+# ###### GLOBAL VARS
+# directory = '../videos1'
+# data = get_sequence(directory=directory)
+# sq = data['Sequence']
+# X_train, y_train = preprocess_ann(data)
+# sc = scaler(X_train)
+# max_len = get_max_length(sq)
 
-def single_video_preprocess(path:str):
-    ''' '''
-    v = get_lightness_difference(path)
-    v = single_video_padding(v, max_len)
-    v = sc.transform(v.reshape(1,-1))
+# def single_video_preprocess(path:str):
+#     ''' '''
+#     v = get_lightness_difference(path)
+#     v = single_video_padding(v, max_len)
+#     v = sc.transform(v.reshape(1,-1))
 
-    return v
+#     return v
