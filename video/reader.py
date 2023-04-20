@@ -29,7 +29,7 @@ class VideoReader:
 
     def __next__(self):
         '''Gets the next frame of the video'''
-        end, frame = self.video.read()
+        end, frame = self._video.read()
         if not end:
             raise StopIteration
         frame = cv.cvtColor(frame, cv.COLOR_BGR2HLS)

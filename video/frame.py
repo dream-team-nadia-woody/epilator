@@ -33,9 +33,9 @@ class Frame(VideoLike):
         ## Returns:
         a PIL Image object
         '''
-        converted_image = self.vid
+        converted_image = self._vid
         if self.converter.display > 0:
-            cv.cvtColor(self.vid, self.converter.display)
+            cv.cvtColor(self._vid, self.converter.display)
         return Image.fromarray(converted_image)
     def segment(self,segments:int):
         pass

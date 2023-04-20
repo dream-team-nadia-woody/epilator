@@ -59,3 +59,10 @@ class Channel:
             channel <= max_threshold)
         channel[~mask] = 0
         return Channel(self.channel_name, channel, self.converter)
+
+    def get_mask(self,min_threshold:int=190, max_threshold:int = 255)->Self:
+        min_threshold = np.uint8(min_threshold)
+        max_threshold = np.uint8(max_threshold)
+        return np.logical_and(
+            self.channel >= min_threshold,
+            self.channel <= max_threshold)
