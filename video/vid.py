@@ -59,7 +59,11 @@ class Video(VideoLike):
     @property
     def length(self) -> np.float128:
         return np.float128(self.end_time - self.start_time)
-
+    
+    @property
+    def aspect_ratio(self)->float:
+        '''returns the ratio of width to height'''
+        return self.width / self.height
     def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
         '''
         Allows for bracket notation in accessing `Video`
@@ -117,9 +121,13 @@ class Video(VideoLike):
             ret_img.paste(img, (x, y))
         return ret_img
 
-    def show_gif(self) -> Image:
+    def show_gif(self,scale:float = 3.0) -> Image:
+        ret_width = int(self.width * scale * self.aspect_ratio)
+        ret_height = int(self.width * scale)
         # Create a list of PIL Image objects from the NumPy array
-        images = [self.__get_img(frame) for frame in self._vid]
+        images = [self.__get_img(frame).resize(
+            (ret_width, ret_height)
+        ) for frame in self._vid]
 
         # Save the GIF to an in-memory buffer
         buffer = BytesIO()
