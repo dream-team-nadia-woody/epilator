@@ -243,7 +243,11 @@ class VideoLike(ABC):
             ret_arr[:, i] = channel.pct_change(periods, agg)
 
         return ret_arr
-
+    
+    def _get_img(self, frame: ArrayLike) -> Image:
+        if self.converter.display > 0:
+            frame = cv.cvtColor(frame, self.converter.display)
+        return Image.fromarray(frame)
     @abstractmethod
     def show(self, n_width: int = 5) -> Image:
         '''shows the video'''

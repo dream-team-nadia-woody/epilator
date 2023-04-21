@@ -25,7 +25,7 @@ class Frame(VideoLike):
         self.seconds = np.float128(frame / fps)
         self.fps = fps
 
-    def show(self) -> Image:
+    def show(self) -> Image.Image:
         '''
         Returns the frame as a PIL Image object
         ## Parameters:
@@ -33,9 +33,7 @@ class Frame(VideoLike):
         ## Returns:
         a PIL Image object
         '''
-        converted_image = self.vid
-        if self.converter.display > 0:
-            cv.cvtColor(self.vid, self.converter.display)
-        return Image.fromarray(converted_image)
+        return self._get_img(self.vid)
+    
     def segment(self,segments:int):
         pass

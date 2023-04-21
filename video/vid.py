@@ -73,14 +73,14 @@ class Video(VideoLike):
         a `Frame` object if accessing a single frame of the video,
         else a `Video` referencing the slice of the video
         '''
-        if isinstance(frame_no, int):
-            frame = self.vid[frame_no]
-            seconds = np.float128(frame_no / self.fps)
-            return Frame(frame, self.fps, self.converter, frame_no)
-        start, stop, step = frame_no.indices(self.vid.shape[0])
-        clip_start = self.start_time + (start / self.fps)
-        clip_end = self.end_time + (stop / self.fps)
-        return Video(self.vid[start:stop:step], self.fps, self.converter, clip_start, clip_end)
+        if isinstance(frame_no, slice):
+            start, stop, step = frame_no.indices(self.vid.shape[0])
+            clip_start = self.start_time + (start / self.fps)
+            clip_end = self.end_time + (stop / self.fps)
+            return Video(self.vid[start:stop:step], self.fps, self.converter, clip_start, clip_end)
+        frame = self.vid[frame_no]
+        seconds = np.float128(frame_no / self.fps)
+        return Frame(frame, self.fps, self.converter, frame_no)
 
     def __setitem__(self, frame_no: int, new_val: int):
         if new_val > 255:
@@ -89,12 +89,9 @@ class Video(VideoLike):
         self.vid[frame_no] = np.full(
             (self.height, self.width, 3), new_val, dtype=np.uint8)
 
-    def __get_img(self, frame: ArrayLike) -> Image:
-        if self.converter.display > 0:
-            frame = cv.cvtColor(frame, self.converter.display)
-        return Image.fromarray(frame)
 
-    def show(self, n_width: int = 5) -> Image:
+
+    def show(self, n_width: int = 5,scale: float = 1.0) -> Image:
         '''
         Shows a sequence of frames from a `Video`,
         `np.ndarray` or `pd.DataFrame`
@@ -106,6 +103,7 @@ class Video(VideoLike):
         a `PIL.Image` object of dimensions :
 
         `(n * [frame width], [frame height] * [frame count] // n)`'''
+        
         if self.frame_count < n_width:
             ret_width = self.width * self.frame_count
             ret_height = self.height
@@ -116,23 +114,23 @@ class Video(VideoLike):
         for index, frame in enumerate(self.vid):
             x = self.width * (index % n_width)
             y = frame.shape[0] * (index // n_width)
-            img = self.__get_img(frame)
+            img = self._get_img(frame)
             # Resize the image to the expected dimensions
             ret_img.paste(img, (x, y))
         return ret_img
 
-    def show_gif(self,scale:float = 3.0) -> Image:
+    def show_gif(self,scale:float = 3.0) -> None:
         ret_width = int(self.width * scale * self.aspect_ratio)
         ret_height = int(self.width * scale)
         # Create a list of PIL Image objects from the NumPy array
-        images = [self.__get_img(frame).resize(
+        images = [self._get_img(frame).resize(
             (ret_width, ret_height)
         ) for frame in self.vid]
 
         # Save the GIF to an in-memory buffer
         buffer = BytesIO()
         images[0].save(buffer, format='GIF', save_all=True,
-                       append_images=images[1:], duration=1000//self.fps, loop=0)
+                       append_images=images[1:], duration=1000/self.fps, loop=0)
 
         # Display the GIF in the Jupyter notebook
         buffer.seek(0)
