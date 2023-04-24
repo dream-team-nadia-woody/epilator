@@ -46,9 +46,9 @@ def get_lightness_difference(vid: Union[str, ArrayLike], fps: int = 30,
     ld = np.diff(av_lightness_per_frame, 1)
     # normalize the array
     ld = ld/np.linalg.norm(ld)
-    return ld, fps
+    return ld,  fps
 
-def find_zero_crossings(lightness_difference: np.array, treshold:float = 0.05):
+def find_zero_crossings(lightness_difference: np.array, treshold:float = 0.01):
     ''' 
     returns an array of indexes in the lightness difference
     where the element changes the sign
@@ -138,7 +138,10 @@ def run_lightness_test(path: str):
     lightness_difference, fps = get_lightness_difference(path)
     zero_crossings = find_zero_crossings(lightness_difference)
     hc_frames = find_hazard_crossings(zero_crossings)
-    return frames_to_seconds(hc_frames, fps)
+    if hc_frames == 0:
+        return 0
+    else:
+        return frames_to_seconds(hc_frames, fps)
 
 ######## RED LIGHT FLASHES #########
 '''
