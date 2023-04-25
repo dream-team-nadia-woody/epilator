@@ -45,8 +45,10 @@ def get_lightness_difference(vid: Union[str, ArrayLike], fps: int = 30,
     # save all values but NaN
     ld = np.diff(av_lightness_per_frame, 1)
     # normalize the array
-    ld = ld/np.linalg.norm(ld)
-    return ld,  fps
+    #ld = ld/np.linalg.norm(ld)
+    # normalize with minmax
+    ld = (ld - ld.min())/(ld.max() - ld.min()) - 0.5 
+    return ld, fps
 
 def find_zero_crossings(lightness_difference: np.array, treshold:float = 0.01):
     ''' 
@@ -116,32 +118,64 @@ def find_hazard_crossings(zero_crossings: np.array, consecutive_numbers=3, fps=3
     # for every slide in sliding windows of size FPS
     # create sliding windows of size 3
     if len(zero_crossings) <= consecutive_numbers:
-        return 0
+        return np.empty(0, dtype=int)
     else:
         windows = np.lib.stride_tricks.sliding_window_view(zero_crossings, \
                                     window_shape=consecutive_numbers)
-            # check which windows have 3 consectutive numbers 
+        # check which windows have 3 consectutive numbers 
         cond = np.all(np.diff(windows, axis=1) == 1, axis = 1)
     
     # return list of seconds in video that are hazard
     return np.unique(windows[cond][:, 0])
 
+def find_hazard_crossings_per_second(zero_crossings: np.array, 
+                            ld_length: int,
+                            crossings_per_second:int = 3, 
+                            fps:int =30):
+    '''
+    Find if there are (3) or more numbers of frames in zero_crossing array per second.
+    Parameters:
+    sliding_windows: 1D numpy array of zero crossings. 
+    Default is 3. 3 consecutive flashes per second are dangerous
+    Returns:
+    list of indexes that start flashes
+    '''
+    
+    # for every slide in sliding windows of size FPS
+    # create sliding windows of size 3
+    if len(zero_crossings) <= crossings_per_second:
+        return np.empty(0, dtype=int)
+    else:
+        windows = np.lib.stride_tricks.sliding_window_view(np.arange(ld_length), \
+                                    window_shape=fps)
+        # create an array to hold hazard frames
+        hf = np.empty(0, dtype=int)
+        for window in windows:
+            # find frames that are the same in the sliding window and zero_crossing
+            a = np.intersect1d(window, zero_crossings)
+            if len(a) >= 3:
+                hf = np.append(hf, a)
+    
+        # return list of seconds in video that are hazard
+        return np.unique(hf)
+
 def frames_to_seconds(frame_numbers: np.array, fps):
     ''' 
     takes a frame numbers
     returns a list of seconds in the video where the content can cause a seizure
-    '''
+    # '''
+    # if frame_numbers == 0 or fps == 0:
+    #     return 0
+    # else:
     seconds = frame_numbers // fps
     return list(set(seconds))
 
 def run_lightness_test(path: str):
-    lightness_difference, fps = get_lightness_difference(path)
-    zero_crossings = find_zero_crossings(lightness_difference)
-    hc_frames = find_hazard_crossings(zero_crossings)
-    if hc_frames == 0:
-        return 0
-    else:
-        return frames_to_seconds(hc_frames, fps)
+    ld, fps = get_lightness_difference(path)
+    zero_crossings = find_zero_crossings(ld)
+    #hc_frames = find_hazard_crossings(zero_crossings)
+    hc_frames = find_hazard_crossings_per_second(zero_crossings, len(ld), fps)
+    return frames_to_seconds(hc_frames, fps)
 
 ######## RED LIGHT FLASHES #########
 '''
