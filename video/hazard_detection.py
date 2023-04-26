@@ -24,7 +24,7 @@ Calculate where it happens more than 3 times in row (or 3 times per second in 30
 '''
 
 #### Get lightness difference from the video
-def get_lightness_difference(vid: Union[str, ArrayLike], fps: int = 30,
+def get_lightness_difference(vid: Union[str, ArrayLike],
                conversion: int = cv.COLOR_BGR2HLS) -> np.array:
     '''
     returns:
@@ -153,7 +153,7 @@ def find_hazard_crossings_per_second(zero_crossings: np.array,
         for window in windows:
             # find frames that are the same in the sliding window and zero_crossing
             a = np.intersect1d(window, zero_crossings)
-            if len(a) >= 3:
+            if len(a) > 3 and len(a) < 50:
                 hf = np.append(hf, a)
     
         # return list of seconds in video that are hazard
