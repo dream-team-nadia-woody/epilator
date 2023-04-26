@@ -295,3 +295,10 @@ class VideoLike(ABC):
     def segment(self, n: int) -> List[Self]:
         '''splits the video into n equal parts'''
         pass
+
+    def blur(self,kernel_x:int, kernel_y:int)->Self:
+        '''returns a copy of itself with the video blurred '''
+        ret_vid = self.copy()
+        for index, frame in enumerate(ret_vid.vid):
+            ret_vid.vid[index] = cv.blur(frame,(kernel_x,kernel_y))
+        return ret_vid
