@@ -234,13 +234,13 @@ def detect_red_light(video_path: str, seconds: bool=True):
     narr = narr.reshape(frames, total_pixels_per_frame)
 
     red_frames = 0
-    sec = []
+    sec = np.empty(0, dtype=int)
     for n in narr:
         if n.sum() > total_pixels_per_frame / 4:
             red_frames += 1
-            sec.append((n / fps).astype(int))
+            sec = np.append(sec, n // fps)
     
     if seconds:
-        return sec
+        return np.unique(sec)
     else:
         return round(red_frames / frames * 100, 2)
