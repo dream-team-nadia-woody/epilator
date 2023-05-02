@@ -25,7 +25,7 @@ def download_video(url: str, path: str = 'videos/',
     '''
 
     '''
-    video = yt(url)
+    video = yt(url, use_oauth=True, allow_oauth_cache=True)
     stream = video.streams.get_highest_resolution()
     try:
         stream.download(path)

@@ -50,7 +50,7 @@ def get_lightness_difference(vid: Union[str, ArrayLike],
     ld = (ld - ld.min())/(ld.max() - ld.min()) - 0.5 
     return ld, fps
 
-def find_zero_crossings(lightness_difference: np.array, treshold:float = 0.01):
+def find_zero_crossings(lightness_difference: np.array, treshold:float = 0.0):
     ''' 
     returns an array of indexes in the lightness difference
     where the element changes the sign
