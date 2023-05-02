@@ -60,10 +60,7 @@ class Video(VideoLike):
     def length(self) -> np.float128:
         return np.float128(self.end_time - self.start_time)
     
-    @property
-    def aspect_ratio(self)->float:
-        '''returns the ratio of width to height'''
-        return self.width / self.height
+
     def __getitem__(self, frame_no: Union[int, slice]) -> Union[Frame, Self]:
         '''
         Allows for bracket notation in accessing `Video`
@@ -91,7 +88,7 @@ class Video(VideoLike):
 
 
 
-    def show(self, n_width: int = 5,scale: float = 1.0) -> Image:
+    def show(self, n_width: int = 5, scale: float = 1.0) -> Image.Image:
         '''
         Shows a sequence of frames from a `Video`,
         `np.ndarray` or `pd.DataFrame`

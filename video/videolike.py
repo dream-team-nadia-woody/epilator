@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 from abc import ABC, abstractmethod
 from video.channel import Channel, AGG_FUNCS, AggregatorFunc
 from video.conversion import Conversions, Converter
-from video.reader import VideoReader, FRAME_X,FRAME_Y
+from video.reader import VideoReader, FRAME_X, FRAME_Y
 import cv2 as cv
 from PIL import Image
 
@@ -138,6 +138,11 @@ class VideoLike(ABC):
         return self.vid.shape[height_index]
 
     @property
+    def aspect_ratio(self) -> float:
+        '''returns the ratio of width to height'''
+        return self.width / self.height
+
+    @property
     def shape(self) -> Tuple[int]:
         '''the shape of the video'''
         return self.vid.shape
@@ -149,7 +154,7 @@ class VideoLike(ABC):
     @classmethod
     def from_file(cls, path: str,
                   converter: Conversions = Conversions.HSV,
-                  resize:Tuple[int,int] = (FRAME_X,FRAME_Y)) -> Self:
+                  resize: Tuple[int, int] = (FRAME_X, FRAME_Y)) -> Self:
         '''
         Creates a new video object from file
         ## Parameters:
@@ -158,7 +163,7 @@ class VideoLike(ABC):
         ## Returns:
         a new Video object
         '''
-        vid, fps = VideoReader.get_vid(path, converter.value.load,resize)
+        vid, fps = VideoReader.get_vid(path, converter.value.load, resize)
         return cls(vid, fps, converter)
 
     def get_channel(self, channel_name: Union[str, int, Channel]) -> Channel:
@@ -198,8 +203,8 @@ class VideoLike(ABC):
             if channel.channel_name in ['value', 'lightness']:
                 index = self.converter.channel_names.index(
                     channel.channel_name)
-                
-                ret_vid.vid[...,index][~mask] = 0
+
+                ret_vid.vid[..., index][~mask] = 0
                 return ret_vid
             for i in range(3):
                 chan = ret_vid.vid[..., i]
@@ -243,13 +248,14 @@ class VideoLike(ABC):
             ret_arr[:, i] = channel.pct_change(periods, agg)
 
         return ret_arr
-    
+
     def _get_img(self, frame: ArrayLike) -> Image:
         if self.converter.display > 0:
             frame = cv.cvtColor(frame, self.converter.display)
         return Image.fromarray(frame)
+
     @abstractmethod
-    def show(self, n_width: int = 5) -> Image:
+    def show(self, scale: float = 1.0) -> Image.Image:
         '''shows the video'''
         pass
 
@@ -277,11 +283,11 @@ class VideoLike(ABC):
         if ret_vid.converter.bgr > 0:
             for index, frame in enumerate(ret_vid.vid):
                 ret_vid.vid[index] = cv.cvtColor(frame,
-                                                  ret_vid.converter.bgr)
+                                                 ret_vid.converter.bgr)
         if new_conversion.load > 0:
             for index, frame in enumerate(ret_vid.vid):
                 ret_vid.vid[index] = cv.cvtColor(frame,
-                                                  ret_vid.converter.load)
+                                                 ret_vid.converter.load)
         ret_vid.converter = new_conversion
         return ret_vid
 
@@ -296,11 +302,11 @@ class VideoLike(ABC):
         '''splits the video into n equal parts'''
         pass
 
-    def blur(self,kernel_x:int, kernel_y:Union[int, None ] = None)->Self:
+    def blur(self, kernel_x: int, kernel_y: Union[int, None] = None) -> Self:
         '''returns a copy of itself with the video blurred '''
         ret_vid = self.copy()
         if kernel_y is None:
             kernel_y = kernel_x
         for index, frame in enumerate(ret_vid.vid):
-            ret_vid.vid[index] = cv.blur(frame,(kernel_x,kernel_y))
+            ret_vid.vid[index] = cv.blur(frame, (kernel_x, kernel_y))
         return ret_vid

@@ -25,7 +25,7 @@ class Frame(VideoLike):
         self.seconds = np.float128(frame / fps)
         self.fps = fps
 
-    def show(self) -> Image.Image:
+    def show(self, scale:float=1.0) -> Image.Image:
         '''
         Returns the frame as a PIL Image object
         ## Parameters:
@@ -33,7 +33,9 @@ class Frame(VideoLike):
         ## Returns:
         a PIL Image object
         '''
-        return self._get_img(self.vid)
+        ret_width = int(self.aspect_ratio * scale * self.width)
+        ret_height = int(scale * self.height)
+        return self._get_img(self.vid).resize((ret_width,ret_height))
     
     def segment(self,segments:int):
         pass
