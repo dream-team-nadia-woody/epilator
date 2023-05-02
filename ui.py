@@ -82,7 +82,7 @@ class FlaggerUI(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    frame = FlaggerUI(root, 'videos/Banned Pokemon Seizure Scene.mp4')
+    frame = FlaggerUI(root)
     frame.pack()
     root.mainloop()
     intervals = [{"start":start,"end":end} for start,end in frame.intervals]
