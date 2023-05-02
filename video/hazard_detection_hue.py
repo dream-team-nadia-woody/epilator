@@ -42,7 +42,7 @@ def get_hue_difference(vid: str, conversion=cv.COLOR_BGR2HLS):
     return hue_d, fps
 
 
-def run_lightness_test(path: str):
+def run_hue_test(path: str):
     hue_d, fps = get_hue_difference(path)
     zero_crossings = hd.find_zero_crossings(hue_d)
     hc_frames = hd.find_hazard_crossings_per_second(zero_crossings, len(hue_d), fps)
