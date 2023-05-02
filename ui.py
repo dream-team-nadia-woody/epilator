@@ -38,7 +38,7 @@ class FlaggerUI(tk.Frame):
         set_start = tk.Button(set_frame, background="#BBFFBB",
                               foreground='black', text="Set Start", command=self.set_start)
         set_end = tk.Button(set_frame, background="#FFBBBB",
-                            foreground='black', text="Set End", command=self.set_start)
+                            foreground='black', text="Set End", command=self.set_end)
         set_start.grid(row=0, column=0, sticky="EW")
         set_end.grid(row=0, column=1, sticky="EW")
         nudge_down.grid(row=0, column=0, sticky="NSE")
@@ -74,8 +74,7 @@ class FlaggerUI(tk.Frame):
     def set_end(self):
         end = self.frame_no.get()
         if self.current_interval[0] > -1:
-            print("saving interval")
-            # self.intervals.append((self.current_interval[0], end))
+            self.intervals.append((self.current_interval[0], end))
             self.current_interval = (-1, -1)
         else:
             self.current_interval = (-1, end)
