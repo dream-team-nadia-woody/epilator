@@ -47,12 +47,12 @@ def get_lightness_difference(vid: Union[str, ArrayLike],
 
     ###### EXPERIMENT #######
 
-    ld_posit = ld[ld > 0]
-    pos_mean = ld_posit.mean()
-    ld_neg = ld[ld < 0]
-    neg_mean = ld_neg.mean()
-    ld = np.where((ld > pos_mean), pos_mean, ld)
-    ld = np.where((ld < neg_mean), neg_mean, ld)
+    # ld_posit = ld[ld > 0]
+    # pos_mean = ld_posit.mean()
+    # ld_neg = ld[ld < 0]
+    # neg_mean = ld_neg.mean()
+    # ld = np.where((ld > pos_mean), pos_mean, ld)
+    # ld = np.where((ld < neg_mean), neg_mean, ld)
 
     ###### EXPERIMENT #######
 
