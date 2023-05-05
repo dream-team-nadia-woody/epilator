@@ -14,7 +14,35 @@ from video.reader import VideoReader
 from typing import List, Union
 from numpy.typing import ArrayLike
 
-######## ZERO CROSSING #########
+
+######## HELPER FUNCTIONS #########
+
+# FORWARD FILL 
+def ffill(arr: np.array):
+    '''forward fill the values in 1D numpy array'''
+    # create a mask for null values
+    mask = np.isnan(arr)
+    # create an array to hold indexes
+    idx = np.where(~mask, np.arange(mask.size), 0)
+    # forward fill indexes (accumulate will retrun the max # of every element in array)
+    np.maximum.accumulate(idx, out=idx)
+    # forward fill the original array
+    return arr[idx]
+
+# BACKWARD FILL
+def bfill(arr: np.array):
+    '''backward fill 1D numpy array'''
+    # create a reverse mask for null values
+    mask = np.isnan(arr[::-1])
+    # create an array to hold indexes for reversed array
+    idx = np.where(~mask, np.arange(mask.size), 0)
+    # backill indexes (forward fill the reversed array of indexes)
+    np.maximum.accumulate(idx, out=idx)
+    # apply reversed indexes to revered array and reverse it back to get an original array :)
+    return arr[::-1][idx][::-1]
+
+
+######### ZERO CROSSING ###########
 
 '''
 Extract lightness difference
@@ -45,24 +73,13 @@ def get_lightness_difference(vid: Union[str, ArrayLike],
     # save all values but NaN
     ld = np.diff(av_lightness_per_frame, 1)
 
-    ###### EXPERIMENT #######
-
-    # ld_posit = ld[ld > 0]
-    # pos_mean = ld_posit.mean()
-    # ld_neg = ld[ld < 0]
-    # neg_mean = ld_neg.mean()
-    # ld = np.where((ld > pos_mean), pos_mean, ld)
-    # ld = np.where((ld < neg_mean), neg_mean, ld)
-
-    ###### EXPERIMENT #######
-
     # normalize the array
     #ld = ld/np.linalg.norm(ld)
     # normalize with minmax
     ld = (ld - ld.min())/(ld.max() - ld.min()) - 0.5 
     return ld, fps
 
-def find_zero_crossings(lightness_difference: np.array, threshold:float = 0.01):
+def find_zero_crossings(lightness_difference: np.array, threshold:float = 0.02):
     ''' 
     returns an array of indexes in the lightness difference
     where the element changes the sign
@@ -70,7 +87,12 @@ def find_zero_crossings(lightness_difference: np.array, threshold:float = 0.01):
     '''
     ld = lightness_difference.copy()
     ld = np.where(np.absolute(ld) < threshold, 
-                                    0, ld)
+                                    np.nan, ld)
+    # make ffill and bfill, because if we leave values as nan or 0
+    # it will count zero crossing in every location of nan and the next index as well
+    ld = ffill(ld)
+    ld = bfill(ld)
+
     return np.where(np.diff(np.sign(ld)))[0] + 1
 
 
@@ -116,9 +138,9 @@ def frames_to_seconds(frame_numbers: np.array, fps):
     seconds = frame_numbers // fps
     return list(set(seconds))
 
-def run_lightness_test(path: str, crossings_per_second:int = 3):
+def run_lightness_test(path: str, crossings_per_second:int = 3, threshold: float = 0.02):
     ld, fps = get_lightness_difference(path)
-    zero_crossings = find_zero_crossings(ld)
+    zero_crossings = find_zero_crossings(ld, threshold)
     #hc_frames = find_hazard_crossings(zero_crossings)
     hc_frames = find_hazard_crossings_per_second(zero_crossings, len(ld), crossings_per_second, fps)
     return frames_to_seconds(hc_frames, fps)
