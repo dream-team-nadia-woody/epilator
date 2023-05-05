@@ -14,7 +14,35 @@ from video.reader import VideoReader
 from typing import List, Union
 from numpy.typing import ArrayLike
 
-######## ZERO CROSSING #########
+
+######## HELPER FUNCTIONS #########
+
+# FORWARD FILL 
+def ffill(arr: np.array):
+    '''forward fill the values in 1D numpy array'''
+    # create a mask for null values
+    mask = np.isnan(arr)
+    # create an array to hold indexes
+    idx = np.where(~mask, np.arange(mask.size), 0)
+    # forward fill indexes (accumulate will retrun the max # of every element in array)
+    np.maximum.accumulate(idx, out=idx)
+    # forward fill the original array
+    return arr[idx]
+
+# BACKWARD FILL
+def bfill(arr: np.array):
+    '''backward fill 1D numpy array'''
+    # create a reverse mask for null values
+    mask = np.isnan(arr[::-1])
+    # create an array to hold indexes for reversed array
+    idx = np.where(~mask, np.arange(mask.size), 0)
+    # backill indexes (forward fill the reversed array of indexes)
+    np.maximum.accumulate(idx, out=idx)
+    # apply reversed indexes to revered array and reverse it back to get an original array :)
+    return arr[::-1][idx][::-1]
+
+
+######### ZERO CROSSING ###########
 
 '''
 Extract lightness difference
@@ -44,89 +72,29 @@ def get_lightness_difference(vid: Union[str, ArrayLike],
     av_lightness_per_frame = np.mean(lightness_per_frame,axis=1)
     # save all values but NaN
     ld = np.diff(av_lightness_per_frame, 1)
+
     # normalize the array
     #ld = ld/np.linalg.norm(ld)
     # normalize with minmax
     ld = (ld - ld.min())/(ld.max() - ld.min()) - 0.5 
     return ld, fps
 
-def find_zero_crossings(lightness_difference: np.array, treshold:float = 0.01):
+def find_zero_crossings(lightness_difference: np.array, threshold:float = 0.02):
     ''' 
     returns an array of indexes in the lightness difference
     where the element changes the sign
     if the 
     '''
     ld = lightness_difference.copy()
-    ld = np.where(np.absolute(ld) < treshold, 
-                                    0, ld)
+    ld = np.where(np.absolute(ld) < threshold, 
+                                    np.nan, ld)
+    # make ffill and bfill, because if we leave values as nan or 0
+    # it will count zero crossing in every location of nan and the next index as well
+    ld = ffill(ld)
+    ld = bfill(ld)
+
     return np.where(np.diff(np.sign(ld)))[0] + 1
 
-def extract_windows(arr: np.array, 
-                    start: int, end: int, sub_window_size: int):
-    '''
-    Creates sliding windows of sub_window_size 
-    '''
-    
-    end = end - sub_window_size + 1
-    sub_windows = (
-        start +
-        # expand_dims are used to convert a 1D array to 2D array.
-        np.expand_dims(np.arange(sub_window_size), 0) +
-        np.expand_dims(np.arange(end - start), 0).T
-    )
-    
-    # one line function if there is no need for start / end indexes
-    # return np.lib.stride_tricks.sliding_window_view(arr, window_shape=sub_window_size)
-    return arr[sub_windows]
-
-def find_hazard_crossings_sw(sliding_windows: np.array, consecutive_numbers=3, fps=30):
-    '''
-    Find if there are (3) consecutive numbers of frames in zero_crossing array.
-    Parameters:
-    sliding_windows: 2D numpy array of sliding windows of FPS (frames per second) size
-    consecutive_numbers: how many consecutive numbers we have to check. 
-    Default is 3. 3 consecutive flashes per second are dangerous
-    Returns:
-    list of indexes that start flashes
-    '''
-    frame_numbers = np.array([], dtype='int')
-    for sw in sliding_windows:
-        # for every slide in sliding windows of size FPS
-        # create sliding windows of size 3
-        windows = np.lib.stride_tricks.sliding_window_view(sw, \
-                                    window_shape=consecutive_numbers)
-        # check which windows have 3 consectutive numbers 
-        cond = np.all(np.diff(windows, axis=1) == 1, axis = 1)
-        frame_numbers = np.append(frame_numbers, windows[cond][:, 0])
-        # return list of seconds in video that are hazard
-    return np.unique(frame_numbers)
-
-'''
-replaces 2 functions above
-:facepalm:
-'''
-def find_hazard_crossings(zero_crossings: np.array, consecutive_numbers=3, fps=30):
-    '''
-    Find if there are (3) consecutive numbers of frames in zero_crossing array.
-    Parameters:
-    sliding_windows: 1D numpy array of zero crossings. 
-    Default is 3. 3 consecutive flashes per second are dangerous
-    Returns:
-    list of indexes that start flashes
-    '''
-    
-    # for every slide in sliding windows of size FPS
-    # create sliding windows of size 3
-    if len(zero_crossings) <= consecutive_numbers:
-        return np.empty(0, dtype=int)
-    else:
-        windows = np.lib.stride_tricks.sliding_window_view(zero_crossings, \
-                                    window_shape=consecutive_numbers)
-        # check which windows have 3 consectutive numbers 
-        cond = np.all(np.diff(windows, axis=1) == 1, axis = 1)
-    
-    # return list of seconds in video that are hazard
-    return np.unique(windows[cond][:, 0])
 
 def find_hazard_crossings_per_second(zero_crossings: np.array, 
                             ld_length: int,
@@ -170,77 +138,11 @@ def frames_to_seconds(frame_numbers: np.array, fps):
     seconds = frame_numbers // fps
     return list(set(seconds))
 
-def run_lightness_test(path: str):
+def run_lightness_test(path: str, crossings_per_second:int = 3, threshold: float = 0.02):
     ld, fps = get_lightness_difference(path)
-    zero_crossings = find_zero_crossings(ld)
+    zero_crossings = find_zero_crossings(ld, threshold)
     #hc_frames = find_hazard_crossings(zero_crossings)
-    hc_frames = find_hazard_crossings_per_second(zero_crossings, len(ld), fps)
+    hc_frames = find_hazard_crossings_per_second(zero_crossings, len(ld), crossings_per_second, fps)
     return frames_to_seconds(hc_frames, fps)
 
-######## RED LIGHT FLASHES #########
-'''
-At the moment counts the frames were red color covers more than 25% of the screen
-'''
 
-def get_red_mask(img):
-    # mask for hue below 10 hue, lightness, saturation
-    lb = np.array([0,50,50], dtype=np.uint8)
-    ub = np.array([10,255,255], dtype=np.uint8)
-    mask1 = cv.inRange(img, lb, ub)
-
-    # # mask for hue above 340
-    lb1 = np.array([170,50, 50], dtype=np.uint8)
-    ub1 = np.array([180,255, 255], dtype=np.uint8)
-    mask2 = cv.inRange(img, lb1, ub1)
-
-    return mask1 | mask2
-
-def detect_red_light(video_path: str, seconds: bool=True):
-    '''
-    Detects what % of video frames have red color on more than 25% of the screen
-    Parameters:
-    videao_path: the path to the video to be analyzed
-
-    Returns:
-    if seconds: 
-        list of seconds where the red light covers more than 25% of the screen
-    else: 
-        the proportion of the video frames with the red light values covering more than 25% of the screen
-    '''
-    # get video and fps
-    vid, fps = VideoReader.get_vid(video_path, 
-                conversion=cv.COLOR_BGR2HLS)
-    # get # of frames, width and height of each frame
-    width = vid.shape[2]
-    height = vid.shape[1]
-    frames = vid.shape[0]
-
-    # create en empty array of integers
-    narr = np.empty((0,), dtype=np.uint8)
-    for v in vid:
-        # get video frame
-        frame = v.reshape(height, width, 3)
-        # apply red mask
-        mask = get_red_mask(frame)
-        # append masked values as 1D array narr
-        narr = np.concatenate([narr, mask.reshape(-1)])
-    # narr -> array whith masked red values. represent pixels of each video frame
-    # in the video. if the pixel is red it equals 1 else 0
-    narr = np.where(narr == 255, 1, 0)
-    # count the number of pixels in frame
-    total_pixels_per_frame = width * height
-    
-    # reshape the narr array to the shape of (frame, total pixels)
-    narr = narr.reshape(frames, total_pixels_per_frame)
-
-    red_frames = 0
-    sec = np.empty(0, dtype=int)
-    for n in narr:
-        if n.sum() > total_pixels_per_frame / 4:
-            red_frames += 1
-            sec = np.append(sec, n // fps)
-    
-    if seconds:
-        return np.unique(sec)
-    else:
-        return round(red_frames / frames * 100, 2)
