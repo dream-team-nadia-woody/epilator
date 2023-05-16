@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from video.vid import Video
+from vid import Video
 from enum import Enum
 import matplotlib.pyplot as plt
 from typing import Callable, Any, Tuple
