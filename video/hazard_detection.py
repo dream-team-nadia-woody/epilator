@@ -121,7 +121,7 @@ def find_hazard_crossings_per_second(zero_crossings: np.array,
         for window in windows:
             # find frames that are the same in the sliding window and zero_crossing
             a = np.intersect1d(window, zero_crossings)
-            if len(a) > 3 and len(a) < 50:
+            if len(a) > 3 and len(a) < 55:
                 hf = np.append(hf, a)
     
         # return list of seconds in video that are hazard
