@@ -9,6 +9,7 @@ from video.conversion import Conversions
 from PIL import ImageTk
 import json
 
+
 class FlaggerUI(tk.Frame):
     filename: str
     vid: Video
@@ -20,16 +21,20 @@ class FlaggerUI(tk.Frame):
     def __init__(self, root: tk.Tk, filename: Union[str, None] = None) -> None:
         super().__init__(root)
         if filename is None:
-            self.filename = filedialog.askopenfilename(defaultextension='.mp4')
+            filename = filedialog.askopenfilename(defaultextension='.mp4')
         self.filename = filename
         self.vid = Video.from_file(filename, resize=(200, 200))
         self.frame_no = tk.IntVar(self)
         root.eval('tk::PlaceWindow . center')
-        slider = ttk.Scale(self, from_=0, to=self.vid.frame_count-1,
+        slider = ttk.Scale(self, name='frame_scale', from_=0, to=self.vid.frame_count-1,
                            variable=self.frame_no, command=self.update_frame, orient='horizontal')
         self.img = ImageTk.PhotoImage(self.vid[0].show(2.0))
         img_label = ttk.Label(self, image=self.img, name="frame")
         img_label['image'] = self.img
+        open_button = tk.Button(self, foreground='black',
+                                text='Open', command=self.open)
+        clear_button = tk.Button(
+            self, foreground='black', text='Clear', command=self.clear)
         nudge_up = tk.Button(
             self, text=">>", name="nudge_up", command=self.nudge_frame_up, foreground='black')
         nudge_down = tk.Button(
@@ -39,13 +44,15 @@ class FlaggerUI(tk.Frame):
                               foreground='black', text="Set Start", command=self.set_start)
         set_end = tk.Button(set_frame, background="#FFBBBB",
                             foreground='black', text="Set End", command=self.set_end)
-        set_start.grid(row=0, column=0, sticky="EW")
-        set_end.grid(row=0, column=1, sticky="EW")
-        nudge_down.grid(row=0, column=0, sticky="NSE")
-        img_label.grid(row=0, column=1)
-        nudge_up.grid(row=0, column=2, sticky="NSW")
-        slider.grid(row=1, column=0, columnspan=3, sticky="EW")
-        set_frame.grid(row=2, column=1)
+        open_button.grid(row=0, column=0)
+
+        set_start.grid(row=1, column=0, sticky="EW")
+        set_end.grid(row=1, column=1, sticky="EW")
+        nudge_down.grid(row=1, column=0, sticky="NSE")
+        img_label.grid(row=1, column=1)
+        nudge_up.grid(row=1, column=2, sticky="NSW")
+        slider.grid(row=2, column=0, columnspan=3, sticky="EW")
+        set_frame.grid(row=3, column=1)
 
     def update_frame(self, event):
         self.img = ImageTk.PhotoImage(self.vid[self.frame_no.get()].show(2.0))
@@ -79,12 +86,27 @@ class FlaggerUI(tk.Frame):
         else:
             self.current_interval = (-1, end)
 
+    def save(self):
+        intervals = [{"start": start, "end": end}
+                     for start, end in self.intervals]
+        with open(path.splitext(self.filename)[0] + '.json', 'w+') as f:
+            json.dump({"filename": self.filename, "intervals": intervals}, f)
+
+    def open(self):
+        self.save()
+        self.intervals = []
+        self.filename = filedialog.askopenfilename(defaultextension='.mp4')
+        self.vid = Video.from_file(self.filename, Conversions.RGB, (200, 200))
+        self.children['frame_scale']['to'] = self.vid.frame_count
+        self.frame_no.set(0)
+
+    def clear(self):
+        self.intervals = []
+
 
 if __name__ == "__main__":
     root = tk.Tk()
     frame = FlaggerUI(root)
     frame.pack()
     root.mainloop()
-    intervals = [{"start":start,"end":end} for start,end in frame.intervals]
-    with open(path.splitext(frame.filename)[0] + '.json', 'w+') as f:
-        json.dump(intervals,f)
+    frame.save()
