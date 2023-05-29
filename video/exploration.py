@@ -6,12 +6,21 @@ import cv2 as cv
 
 from typing import Union
 
-import acquire as ac
-import vid as v
-import df as df
+import video.vid as v
+import video.df as df
 
 import warnings
 warnings.filterwarnings("ignore")
+
+########################################
+##### functions for final notebook #####
+########################################
+
+
+
+########################################
+### functions for draft exploration ####
+########################################
 
 def  frame_vs_sec(adf):
     '''

@@ -163,3 +163,56 @@ def get_aggregated_df(df: pd.DataFrame) -> pd.DataFrame:
     # height = len(df.index.levels[1])
 
     return cdf
+
+def get_bgr_df(vid: Union[str, ArrayLike], fps: int = 30,
+               rename: List[str] = ['blue', 'green', 'red']) -> pd.DataFrame:
+    '''
+    Loads a video into a Pandas `DataFrame` in the BGR format
+    ## Parameters:
+    vid: either a `np.ndarray` object containing containing the target video or a string with its path
+    fps: the speed of the video in frames per second
+    conversion: the OpenCV color conversion constant with which to convert the video (default is HLS).
+    rename: a `list` to rename the numeric columns to in the finished `DataFrame`.
+    ## Returns:
+    A DataFrame, indexed on the frame and the x and y coordinates of the corresponding pixel, as well
+    as its three color values.
+    '''
+    if isinstance(vid, str):
+        vid, fps = VideoReader.get_vid(vid, 0)
+    frames = vid.shape[0]
+    height = vid.shape[1]
+    width = vid.shape[2]
+    df = pd.DataFrame(vid.reshape((-1, 3)))
+    df['frame'] = df.index // (width * height)
+    df['x'] = df.index % width
+    df['y'] = df.index // width % height
+    rename = {key: value for key, value in enumerate(rename)}
+    df = df.set_index(['frame', 'y', 'x']).rename(columns=rename)
+
+    # to call attributes -> df.attrs['width']
+    df.attrs['height'] = height
+    df.attrs['width'] = width
+    df.attrs['fps'] = fps
+
+    return df
+
+def get_bgr_cdf(vid: Union[str, ArrayLike], fps: int = 30,
+               rename: List[str] = ['blue', 'green', 'red']) -> pd.DataFrame:
+    '''
+    returns aggregated (by average per frame) values of hue,
+    lightness, saturation and mask
+    '''
+    df = get_bgr_df(vid)
+    # lightness series
+    blue = df.groupby('frame').blue.mean()
+    # hue hls
+    green = df.groupby('frame').green.mean()
+    # saturtion hls
+    red = df.groupby('frame').red.mean()
+
+
+    cdf = pd.concat([blue, green, red], axis=1)
+
+    return cdf
+
+
