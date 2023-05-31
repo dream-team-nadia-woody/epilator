@@ -210,8 +210,12 @@ def get_bgr_cdf(vid: Union[str, ArrayLike], fps: int = 30,
     # saturtion hls
     red = df.groupby('frame').red.mean()
 
-
     cdf = pd.concat([blue, green, red], axis=1)
+    cdf['sum_channels'] = cdf.blue + cdf.green + cdf.red
+    cdf['sum_diff'] = cdf.sum_channels.diff(1)
+    # normalize with minmax
+    cdf['normal'] = (cdf.sum_diff - cdf.sum_diff.min())/(cdf.sum_diff.max() - cdf.sum_diff.min()) - 0.5
+    #cdf['sum_normal'] = (cdf.sum_channels - cdf.sum_channels.min())/(cdf.sum_channels.max() - cdf.sum_channels.min()) - 0.5
 
     return cdf
 
