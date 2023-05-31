@@ -98,7 +98,7 @@ def find_zero_crossings(lightness_difference: np.array, threshold:float = 0.02):
 
 def find_hazard_crossings_per_second(zero_crossings: np.array, 
                             ld_length: int,
-                            crossings_per_second:int = 3, 
+                            crossings_per_second:int = 4, 
                             fps:int =30):
     '''
     Find if there are (3) or more numbers of frames in zero_crossing array per second.
@@ -110,7 +110,7 @@ def find_hazard_crossings_per_second(zero_crossings: np.array,
     '''
     
     # for every slide in sliding windows of size FPS
-    # create sliding windows of size 3
+    # create sliding windows of size 4 (crossings per second > 3)
     if len(zero_crossings) <= crossings_per_second:
         return np.empty(0, dtype=int)
     else:
